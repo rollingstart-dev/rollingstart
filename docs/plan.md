@@ -141,6 +141,36 @@ instance definition too.
 
 ---
 
+### 2.6 Readiness has two meanings
+
+`rolling doctor` reports two things that look alike and are not.
+
+**Harness preconditions** — a git repository, a clean working tree, an
+`instance.toml` that parses, a watcher that fires on a synthetic file event, a
+sane `core.autocrlf`. Red here is blocking: nothing can proceed and no lesson can
+be served.
+
+**Instance command health** — whether the declared build, typecheck, test, and
+lint commands actually run. Red here is *informational*, because a codebase
+instance's first lesson is frequently "get this running for local dev." A failing
+`pnpm install` may mean the environment is broken, or it may mean the learner
+hasn't done lesson one yet. The harness cannot tell those apart and must not
+pretend to.
+
+That gives the setup lesson somewhere real to live: a skill node whose operations
+are the project's own install and stack-up commands, and whose completion
+condition is doctor's second section going green. The learner's first task is
+making the tool's own readiness check pass.
+
+Where `rolling` runs varies by target, and the harness does not care. Rallly's
+`docker-compose.dev.yml` is infrastructure only — postgres, redis, garage,
+mailpit — and its toolchain runs on the host. uceap3 has an `app` service with
+the workspace bind-mounted, so its toolchain lives inside the container. Instance
+#1 and instance #2 therefore exercise both shapes, which is the agnosticism claim
+being tested rather than asserted.
+
+---
+
 ## 3. Milestones
 
 Each is independently useful. No model call appears until M4 — M1 through M3 are a
@@ -152,18 +182,26 @@ Tea. Apache-2.0, NOTICE, CI.
 **Exit:** `rolling version` runs on macOS and Linux.
 
 ### M1 — `rolling doctor`
-Instance config loading. Run the declared commands, parse their output, report
-what's missing or unparseable. Actively probe the environment: fire a synthetic
-file event and confirm the watcher sees it, check `core.autocrlf`, check the
-working copy is clean.
-**Exit:** point `rolling doctor` at Rallly, get an accurate green.
+Instance config loading. Run the declared commands, parse their output, and
+report against the two-section model in §2.6 — blocking harness preconditions
+kept separate from informational instance command health.
+
+Probes: git repo present, working tree clean, `instance.toml` parses,
+`core.autocrlf` sane, and a synthetic file event the watcher must observe.
+
+**Exit:** point `rolling doctor` at a fresh Rallly clone on a machine with no
+pnpm and no stack running — the exact state a real learner starts in — and get
+harness-green with instance-red, the instance failures named accurately rather
+than reported as breakage. Then install pnpm, bring the stack up, and watch the
+second section flip to green.
 *No LLM. Proves the adapter and output parsing before anything depends on them.*
 
 ### M2 — Formats, hand-authored
 Write a Rallly instance **by hand**: 8–10 skill nodes with prerequisite edges, a
 declared destination set, per-node demonstration bars, at least one optional node
 off the required spine, 3–5 operations mapped to its `db:*` scripts, and 2–3 tasks
-with verifiers and reference solutions. Profile schema and its mutation rules.
+with verifiers and reference solutions. One of those nodes is local-dev setup,
+whose verifier is doctor's instance section going green. Profile schema and its mutation rules.
 **Exit:** the formats survive contact with a real repo, and authoring a trajectory
 feels like a job a busy staff engineer would actually do.
 *Hand-author before generating. Otherwise you generate into an unvalidated format.*
