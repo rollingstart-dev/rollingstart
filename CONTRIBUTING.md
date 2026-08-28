@@ -4,24 +4,12 @@ Thanks for looking. This is pre-alpha — the design is settled, the implementat
 is early. [docs/plan.md](docs/plan.md) carries the decision record and the
 milestone sequence, and reading it first will save you time.
 
-## Developer Certificate of Origin
+## Licensing
 
-Contributions are accepted under the
-[Developer Certificate of Origin](https://developercertificate.org/). It is a
-short statement that you have the right to submit the code you're submitting. You
-assert it by signing off your commits:
-
-```
-git commit -s
-```
-
-which appends:
-
-```
-Signed-off-by: Your Name <you@example.com>
-```
-
-No CLA, no copyright assignment. Sign-off is checked in CI.
+Contributions are accepted under [Apache-2.0](LICENSE), the project's license.
+There is no CLA and no copyright assignment: Apache-2.0 §5 already places
+inbound contributions under the same license, and §3 carries a patent grant from
+contributors. Nothing to sign, nothing to wait on.
 
 ## Building
 

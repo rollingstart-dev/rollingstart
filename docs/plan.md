@@ -148,7 +148,7 @@ working deterministic tutor.
 
 ### M0 — Skeleton
 Go module, `cmd/rolling` + `internal/*` mirroring homie's layout. Cobra + Fang, Bubble
-Tea. Apache-2.0, NOTICE, DCO sign-off, CI.
+Tea. Apache-2.0, NOTICE, CI.
 **Exit:** `rolling version` runs on macOS and Linux.
 
 ### M1 — `rolling doctor`
