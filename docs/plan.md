@@ -201,7 +201,9 @@ Write a Rallly instance **by hand**: 8–10 skill nodes with prerequisite edges,
 declared destination set, per-node demonstration bars, at least one optional node
 off the required spine, 3–5 operations mapped to its `db:*` scripts, and 2–3 tasks
 with verifiers and reference solutions. One of those nodes is local-dev setup,
-whose verifier is doctor's instance section going green. Profile schema and its mutation rules.
+whose verifier is doctor's instance section going green. Task types follow the
+ladder borrowed from repo-learner-suite — Use → Modify → Debug → Create →
+Compare — one new concept per task (see docs/landscape.md). Profile schema and its mutation rules.
 **Exit:** the formats survive contact with a real repo, and authoring a trajectory
 feels like a job a busy staff engineer would actually do.
 *Hand-author before generating. Otherwise you generate into an unvalidated format.*
@@ -341,3 +343,18 @@ Not now, and not by accident:
 - The language-tutor instance — it exercises the harness but dodges every risk
   that could kill the project: content provenance, grounding, skill-graph
   induction, and the author role
+
+## 6. Rejected, with reasons
+
+Distinct from §5: these are not postponed, they are out of scope by design.
+
+**Spaced repetition and any decay model.** Rolling Start is an on-ramp, not a
+residence. The goal is self-sustaining proficiency and then departure. A learner
+still being drilled a year in is a symptom, not a feature, and if getting someone
+productive takes longer than about three months the product failed. Tracking a
+codebase as it evolves is a real problem and a different product.
+
+**Explaining the codebase as an end in itself.** That category is crowded and
+well funded — Greptile, Unblocked, DeepWiki, Sourcegraph. Explanation here exists
+only in service of a task the learner is about to attempt. See
+docs/landscape.md.

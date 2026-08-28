@@ -130,6 +130,18 @@ Learn the codebase → contribute (bug fixes, then features) → review contribu
 separate products. Existing tools pick one rung. Teaching *review* is the least
 served and probably the most defensible.
 
+## What it is not
+
+**An on-ramp, not a residence.** The goal is self-sustaining proficiency, and
+then the learner leaves. There is no spaced repetition, no decay model, no
+scheduled re-drilling. A learner still being examined a year in is a symptom, not
+a feature, and if getting someone productive takes more than about three months
+we have failed. Keeping people abreast of a codebase as it evolves is a real
+problem and a different product.
+
+**Not a documentation tool.** It never sets out to explain the codebase. Where
+explanation happens it is in service of a task the learner is about to attempt.
+
 ## Where it sits
 
 - Rustlings, Exercism, CodeCrafters — the watch-and-verify loop is commodity. The

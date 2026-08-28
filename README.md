@@ -31,6 +31,38 @@ In-house development teams at large organizations, frequently not tech companies
 and needing to onboard existing staff onto a codebase they had no hand in
 building.
 
+## Why this exists
+
+There are good tools for understanding a codebase. Greptile indexes your repo and
+answers questions about it. Unblocked connects a line of code to the Slack thread
+that explains it. DeepWiki turns a repository into a browsable wiki. They work,
+and if what you need is an answer, use them.
+
+They share three assumptions Rolling Start rejects.
+
+**That understanding is the goal.** You can read an excellent explanation of a
+subsystem and remain unable to fix a bug in it. The feeling of understanding is
+cheap to produce and unreliable as a signal. The only test that means anything is
+whether you can do the work — so Rolling Start doesn't explain the codebase to
+you. It puts you in it, gives you a real task, and checks what you actually
+changed, starting with the compiler and the repo's own test suite.
+
+**That the tool should be permanent.** Ask a comprehension tool a question, get an
+answer, ask again next week. Nothing accumulates in *you*. That isn't an
+engineering failure, it's a business model — per-seat-per-month requires that you
+keep needing it. Rolling Start's success condition is that you stop using it.
+It's an on-ramp, not a place to live. If getting someone productive takes more
+than a few months, it failed.
+
+**That every developer is the same developer.** Those tools answer identically no
+matter who is asking. There's no model of you, so nothing gets skipped because
+you already know it and nothing gets revisited because you keep getting it wrong.
+Rolling Start keeps a durable record of what you've actually demonstrated and
+routes around what you've already proven.
+
+> They explain the code to you. Rolling Start makes you change it, then checks
+> whether you got it right.
+
 ## How it works
 
 - **You keep your editor.** Rolling Start watches the working copy and evaluates
@@ -49,6 +81,7 @@ building.
 
 - [Design](docs/design.md) — what it is and the principles behind it
 - [Plan](docs/plan.md) — decision record, architecture, milestones, risks
+- [Landscape](docs/landscape.md) — what else exists and why this is different
 - [Contributing](CONTRIBUTING.md)
 
 ## License
