@@ -7,7 +7,7 @@ already a skilled engineer — Rolling Start doesn't teach you to program. It ge
 you up to speed in *this* codebase.
 
 > **Status: pre-alpha.** The design is settled and the skeleton builds. Nothing
-> teaches anything yet. See [docs/plan.md](docs/plan.md) for the milestone this
+> teaches anything yet. See [docs/roadmap.md](docs/roadmap.md) for the milestone this
 > is on.
 
 ## What it is
@@ -80,8 +80,10 @@ routes around what you've already proven.
 ## Documentation
 
 - [Design](docs/design.md) — what it is and the principles behind it
-- [Plan](docs/plan.md) — decision record, architecture, milestones, risks
+- [Roadmap](docs/roadmap.md) — decision record, architecture, milestones, risks
 - [Landscape](docs/landscape.md) — what else exists and why this is different
+- [Workflow](docs/workflow.md) — how work happens here, in public
+- [Decisions](docs/decisions/) — ADRs
 - [Contributing](CONTRIBUTING.md)
 
 ## License

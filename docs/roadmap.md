@@ -1,7 +1,11 @@
-# Rolling Start — Implementation Plan
+# Rolling Start — Roadmap
 
-Companion to `docs/design.md`. The brief says what we're building; this says
-what we decided, why, and in what order we build it.
+Companion to `docs/design.md`. The design doc says what we're building; this
+says what we decided, why, and in what order we build it.
+
+Milestones here are the roadmap. Each one gets an expanded plan in
+`docs/plans/` when `/plan-milestone` runs on it, and a GitHub milestone and
+project board that track the work.
 
 ---
 
