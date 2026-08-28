@@ -1,0 +1,18 @@
+# Build artifacts
+/rolling
+/dist/
+*.exe
+
+# Go
+*.test
+*.out
+/vendor/
+
+# Learner profiles are never committed. Instances also write their own
+# .gitignore inside profile/ so this doesn't depend on the repo root.
+.rollingstart/profile/
+
+# Editors / OS
+.DS_Store
+*.swp
+.idea/
