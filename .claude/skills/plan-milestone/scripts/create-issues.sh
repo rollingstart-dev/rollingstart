@@ -80,7 +80,7 @@ while IFS=$'\t' read -r num title slug; do
     printf 'Sub-scope of **[M%s plan](%s#%s)**.\n\n---\n' \
       "$ms_num" "$plan_url" "$slug"
     # Trim trailing blank lines for a clean issue body.
-    awk 'NF {blank=0; for(i=0;i<held;i++) print ""; print; next} {held++}' "$body_file"
+    awk 'NF {for(i=0;i<held;i++) print ""; held=0; print; next} {held++}' "$body_file"
   } > "$issue_file"
 
   issue_url=$(gh issue create \
