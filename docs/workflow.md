@@ -64,9 +64,15 @@ milestone — never by whichever board feels current.
 ### Fold-in decisions go in issue bodies, never only in comments
 
 When triage folds one issue's work into another, record it as a checklist item
-in the *receiving* issue's body. Implementation reads bodies; comments on a
-parent are invisible to whoever picks up its sub-issues, and a closed issue's
-comments are invisible to everyone.
+in the *receiving* issue's body.
+
+Both `/refine-issue` and `/implement-issue` read comments, so this isn't about
+what gets read. It's about what gets **found**. A fold-in sitting in comment 34
+of 40 is technically read and practically missed; a closed issue's comments are
+invisible to everyone in practice; and whoever implements a sub-issue reads
+*that* sub-issue, so a note on the parent's thread still isn't where the work
+happens. The comment reads catch violations of this rule. They don't replace
+it.
 
 ### In-flight scope additions
 
