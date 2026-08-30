@@ -1,3 +1,5 @@
+//go:build unix
+
 package runner
 
 import (
@@ -6,9 +8,17 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
+
+func TestZeroResultIsNotSuccess(t *testing.T) {
+	var res Result
+	if res.Outcome == Succeeded {
+		t.Error("zero Result reads as Succeeded — an aborted run would render green")
+	}
+}
 
 func TestRunOutcomes(t *testing.T) {
 	tests := []struct {
@@ -56,6 +66,65 @@ func TestRunOutcomes(t *testing.T) {
 				t.Errorf("Output %q does not contain %q", res.Output, tt.wantInOutput)
 			}
 		})
+	}
+}
+
+func TestRunNotExecutableIsNotStartable(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "nox"), []byte("#!/bin/sh\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, err := Run(context.Background(), Spec{Command: "./nox", Dir: dir})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Outcome != NotStartable {
+		t.Errorf("Outcome = %v, want NotStartable", res.Outcome)
+	}
+	if res.ExitCode != 126 {
+		t.Errorf("ExitCode = %d, want 126", res.ExitCode)
+	}
+}
+
+func TestRunSucceedsWithLingeringChild(t *testing.T) {
+	// A background child inheriting stdout — a daemon, a watcher — keeps
+	// the pipe open after the command exits zero. Wait gives up on the pipe
+	// after waitDelay and reports ErrWaitDelay, which is a success, not a
+	// startup failure. The ~2s this test takes is the waitDelay stall every
+	// such command pays.
+	res, err := Run(context.Background(), Spec{Command: "sleep 5 & echo build-ok; exit 0"})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Outcome != Succeeded {
+		t.Errorf("Outcome = %v, want Succeeded", res.Outcome)
+	}
+	if res.ExitCode != 0 {
+		t.Errorf("ExitCode = %d, want 0", res.ExitCode)
+	}
+	if !strings.Contains(string(res.Output), "build-ok") {
+		t.Errorf("Output %q does not contain %q", res.Output, "build-ok")
+	}
+}
+
+func TestRunSignalKilledIsFailedWithSignal(t *testing.T) {
+	// Killed from outside with no timeout in play — an OOM kill, a stray
+	// Ctrl-C. The signal, not a fabricated exit code, is the diagnosis.
+	res, err := Run(context.Background(), Spec{Command: "echo working; kill -KILL $$"})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Outcome != Failed {
+		t.Errorf("Outcome = %v, want Failed", res.Outcome)
+	}
+	if res.ExitCode != -1 {
+		t.Errorf("ExitCode = %d, want -1", res.ExitCode)
+	}
+	if res.Signal != syscall.SIGKILL {
+		t.Errorf("Signal = %v, want SIGKILL", res.Signal)
+	}
+	if !strings.Contains(string(res.Output), "working") {
+		t.Errorf("Output %q does not contain %q", res.Output, "working")
 	}
 }
 
@@ -134,6 +203,54 @@ func TestRunTimeoutKillsProcessGroup(t *testing.T) {
 	}
 	if elapsed > 1*time.Second {
 		t.Errorf("Run returned after %v, want well under WaitDelay — the group was not killed", elapsed)
+	}
+}
+
+func TestRunTimeoutLetsCommandShutDownCleanly(t *testing.T) {
+	// The timeout sends SIGTERM before any SIGKILL, so a command that
+	// cleans up on request gets to. It still counts as timed out — a
+	// graceful exit on the harness's signal is not a success — and its
+	// shutdown output is kept.
+	res, err := Run(context.Background(), Spec{
+		Command: "trap 'echo cleaned-up; exit 0' TERM; sleep 30",
+		Timeout: 100 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Outcome != TimedOut {
+		t.Errorf("Outcome = %v, want TimedOut", res.Outcome)
+	}
+	if !strings.Contains(string(res.Output), "cleaned-up") {
+		t.Errorf("Output %q does not contain the shutdown message", res.Output)
+	}
+}
+
+func TestRunTimeoutEscalatesToKillingTheGroup(t *testing.T) {
+	// A command that ignores SIGTERM (children started after the trap
+	// inherit the ignore) must still die: after termGrace the whole group
+	// is SIGKILLed. The lower bound proves the grace period was honoured,
+	// the upper bound that the escalation, not WaitDelay, ended the run.
+	start := time.Now()
+	res, err := Run(context.Background(), Spec{
+		Command: "trap '' TERM; sleep 30 & sleep 30",
+		Timeout: 100 * time.Millisecond,
+	})
+	elapsed := time.Since(start)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Outcome != TimedOut {
+		t.Errorf("Outcome = %v, want TimedOut", res.Outcome)
+	}
+	if res.Signal != syscall.SIGKILL {
+		t.Errorf("Signal = %v, want SIGKILL", res.Signal)
+	}
+	if elapsed < termGrace {
+		t.Errorf("Run returned after %v, inside the %v SIGTERM grace period", elapsed, termGrace)
+	}
+	if elapsed > 4*time.Second {
+		t.Errorf("Run returned after %v, want promptly after the SIGKILL escalation", elapsed)
 	}
 }
 
