@@ -150,6 +150,20 @@ func TestCleanTree(t *testing.T) {
 			wantIn:     "not clean",
 		},
 		{
+			// The learner's own config must not blind the probe: with
+			// status.showUntrackedFiles=no, plain porcelain output is
+			// empty for a tree full of untracked files.
+			name: "untracked file hidden by config",
+			dir: func(t *testing.T) string {
+				dir := initRepo(t)
+				gitIn(t, dir, "config", "status.showUntrackedFiles", "no")
+				write(t, dir, "junk.txt", "x")
+				return dir
+			},
+			wantStatus: Red,
+			wantIn:     "not clean",
+		},
+		{
 			name:       "no repository",
 			dir:        func(t *testing.T) string { return t.TempDir() },
 			wantStatus: Red,
@@ -171,22 +185,31 @@ func TestCleanTree(t *testing.T) {
 
 func TestAutoCRLF(t *testing.T) {
 	isolateGitConfig(t)
+	// The spelled-out cases cover git's whole boolean vocabulary, not just
+	// the canonical spellings: git accepts 0/no/off as false and 1/yes/on
+	// as true, and --get returns whichever raw string the learner wrote.
 	tests := []struct {
 		name       string
-		value      string // "" leaves core.autocrlf unset
+		set        bool
+		value      string
 		wantStatus Status
 		wantIn     string
 	}{
-		{name: "unset", value: "", wantStatus: Green, wantIn: "unset"},
-		{name: "false", value: "false", wantStatus: Green, wantIn: "false"},
-		{name: "input", value: "input", wantStatus: Green, wantIn: "input"},
-		{name: "true", value: "true", wantStatus: Red, wantIn: "CRLF"},
-		{name: "unexpected value", value: "maybe", wantStatus: Red, wantIn: "unexpected"},
+		{name: "unset", wantStatus: Green, wantIn: "unset"},
+		{name: "false", set: true, value: "false", wantStatus: Green, wantIn: "false"},
+		{name: "input", set: true, value: "input", wantStatus: Green, wantIn: "input"},
+		{name: "true", set: true, value: "true", wantStatus: Red, wantIn: "CRLF"},
+		{name: "zero is false", set: true, value: "0", wantStatus: Green, wantIn: "false"},
+		{name: "off is false", set: true, value: "off", wantStatus: Green, wantIn: "false"},
+		{name: "one is true", set: true, value: "1", wantStatus: Red, wantIn: "CRLF"},
+		{name: "yes is true", set: true, value: "yes", wantStatus: Red, wantIn: "CRLF"},
+		{name: "explicit empty is false", set: true, value: "", wantStatus: Green, wantIn: "false"},
+		{name: "unexpected value", set: true, value: "maybe", wantStatus: Red, wantIn: "unexpected"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := initRepo(t)
-			if tt.value != "" {
+			if tt.set {
 				gitIn(t, dir, "config", "core.autocrlf", tt.value)
 			}
 			res := AutoCRLF(context.Background(), dir)
@@ -215,6 +238,52 @@ func TestAutoCRLFUnreadableConfigIsNotUnset(t *testing.T) {
 	}
 	if strings.Contains(res.Message, "unset") {
 		t.Errorf("Message %q claims the key is unset", res.Message)
+	}
+}
+
+func TestAutoCRLFValuelessKeyMeansTrue(t *testing.T) {
+	// A bare "autocrlf" line with no value means true to git — the config
+	// CLI cannot write that form, so it is appended to the file directly.
+	isolateGitConfig(t)
+	dir := initRepo(t)
+	f, err := os.OpenFile(filepath.Join(dir, ".git", "config"), os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString("[core]\n\tautocrlf\n"); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	res := AutoCRLF(context.Background(), dir)
+	if res.Status != Red {
+		t.Errorf("Status = %v, want Red (message: %q)", res.Status, res.Message)
+	}
+	if !strings.Contains(res.Message, "CRLF") {
+		t.Errorf("Message %q does not carry the CRLF explanation", res.Message)
+	}
+}
+
+func TestGitRepoDubiousOwnershipIsNotMisreported(t *testing.T) {
+	// Exit 128 is git's generic fatal, not a synonym for "no repository".
+	// A repo owned by another uid — routine in devcontainers and mounted
+	// volumes — must surface git's own words, which include the
+	// safe.directory remedy, rather than telling a learner standing in the
+	// right directory to go somewhere else. GIT_TEST_ASSUME_DIFFERENT_OWNER
+	// is how git's own test suite simulates the foreign owner.
+	isolateGitConfig(t)
+	dir := initRepo(t)
+	t.Setenv("GIT_TEST_ASSUME_DIFFERENT_OWNER", "1")
+	res := GitRepo(context.Background(), dir)
+	if res.Status != Red {
+		t.Errorf("Status = %v, want Red (message: %q)", res.Status, res.Message)
+	}
+	if !strings.Contains(res.Message, "dubious ownership") || !strings.Contains(res.Message, "safe.directory") {
+		t.Errorf("Message %q does not surface git's dubious-ownership words and remedy", res.Message)
+	}
+	if strings.Contains(res.Message, "not inside a git repository") {
+		t.Errorf("Message %q misdirects the learner to change directory", res.Message)
 	}
 }
 
