@@ -7,6 +7,11 @@
 // the git CLI with constructed arguments — not through internal/runner, which
 // executes instance-declared shell strings: different provenance, different
 // trust, different execution model.
+//
+// Probes assume a standard single clone. git worktree layouts get no
+// special handling: target repositories depend on path-bound infrastructure
+// — compose stacks, devcontainers — so a worktree is not a supported shape
+// (roadmap § 1, task isolation).
 package probe
 
 import "fmt"
