@@ -3,7 +3,10 @@
 // before any lesson can be served (roadmap § 2.6).
 //
 // Probes observe and report; they never render, never fix, and never depend
-// on one another having run. Git probes interrogate the repository by running
+// on one another having run. They are independent but must not be run
+// concurrently: Watcher writes a synthetic file into the checkout root for
+// the length of its wait, and CleanTree run alongside it would report that
+// file as the learner's. Git probes interrogate the repository by running
 // the git CLI with constructed arguments — not through internal/runner, which
 // executes instance-declared shell strings: different provenance, different
 // trust, different execution model.
