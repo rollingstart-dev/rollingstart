@@ -1,0 +1,8 @@
+# Rolling Start's own instance definition. This repository is meant to
+# become an instance of its own tool, and CI verifies the harness probes
+# against it as one. Schema v0 (docs/reference/instance-toml.md): commands
+# only, mirroring what CI runs.
+[commands]
+build = "go build ./..."
+test  = "go test ./..."
+lint  = "go vet ./..."
