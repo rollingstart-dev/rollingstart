@@ -39,11 +39,17 @@ describing that behaviour first — README, command help text, or the instance
 authoring guide. That documentation is the spec, and the failing test in
 `/implement-issue` encodes it.
 
+Draft it during refinement. It lands through a PR — its own, `Refs #N`
+against the issue, so the spec is reviewed before any code is written against
+it — never as a direct commit to `main`. Sub-issues can cite its path on
+`main`; the links resolve when the PR merges.
+
 **Is it architecture or infrastructure?** Check whether it meets the ADR
 threshold in [`docs/decisions/README.md`](../../../docs/decisions/README.md) —
 affects more than the file you're editing, would have to be re-derived if
 forgotten, and a reasonable person could have chosen otherwise. If so, draft the
-ADR now. If not, the reasoning belongs in the commit body and nowhere else.
+ADR now; it lands the same way, through a PR. If not, the reasoning belongs in
+the commit body and nowhere else.
 
 **Does it cross an architectural seam?** The engine parsing a target language,
 the harness touching environment lifecycle, generated content becoming shell,
@@ -99,12 +105,14 @@ only as a comment. Implementation reads bodies.
 
 ### 6. Present findings
 
-Report what you found and proposed. Wait for approval before committing any
-documentation.
+Report what you found and proposed. Wait for approval before creating
+sub-issues or opening the documentation PR. Never commit the documentation
+directly to `main`.
 
 ## Output
 
 - Parent converted to a tracking issue, or a refinement comment if the scope is small
 - Sub-issues created, each scoped to one reviewable PR, on the milestone and natively linked
-- Draft documentation or an ADR where the work needed one
+- Draft documentation or an ADR where the work needed one, opened as a PR
+  against the issue
 - Open questions flagged

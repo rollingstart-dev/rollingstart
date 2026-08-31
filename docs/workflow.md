@@ -44,10 +44,12 @@ branches. Descriptive kebab-case names, optionally prefixed with the milestone
 scope (`m1.2/command-runner`). No issue numbers in branch names — link with
 `Closes #N` in the PR body.
 
-A small, isolated change with no issue behind it — the milestone plan when
-`/plan-milestone` commits it, a plan status flip at closeout, a guidance edit
-— may land directly on `main` instead of through a PR. The agent asks which
-landing the maintainer wants; it never assumes.
+Direct commits to `main` are a narrow exception, not a lane: a change where a
+PR would be needless ceremony — a plan status flip at closeout, a one-line
+guidance fix — and only on the maintainer's say-so, asked each time. Anything
+that deserves a reviewer's eyes goes through a PR attached to its issue. A new
+spec, reference page, or ADR always does, including one drafted during
+`/refine-issue`: writing it is work product, not housekeeping.
 
 ## Issues
 

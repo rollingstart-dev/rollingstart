@@ -67,10 +67,12 @@ Coach observations feed the profile; only grader verdicts move the skill graph.
 Keep that seam intact — it is the whole non-sycophancy argument.
 
 **One issue → one branch → one PR.** For large scopes, base-chained stacks.
-Never GitHub's native stacked PRs. A small, isolated change with no issue
-behind it — a milestone plan, a plan status flip, a guidance edit — may
-instead be committed directly to `main`; ask which landing the maintainer
-wants rather than assuming either.
+Never GitHub's native stacked PRs. Direct commits to `main` are the
+exception, not a lane: for a change where a PR would be needless ceremony —
+a plan status flip at closeout, a one-line guidance fix — and only on the
+maintainer's say-so, asked each time. Anything that deserves a reviewer's
+eyes goes through a PR attached to its issue, and a new spec, reference
+page, or ADR always does: writing one is work product, not housekeeping.
 
 **Every push that changes behavior gets a local code review first.** Spawn a
 code-review sub-agent on the Opus model (`claude-opus-5`) over the outgoing
