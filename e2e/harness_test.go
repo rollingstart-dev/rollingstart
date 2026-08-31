@@ -2,11 +2,13 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -34,8 +36,15 @@ func runMain(m *testing.M) int {
 	defer os.RemoveAll(dir)
 	binary = filepath.Join(dir, "rolling")
 	// The import path rather than a relative one: it is the same build a
-	// learner runs, and it does not care where the test's cwd is.
-	build := exec.Command("go", "build", "-o", binary, "github.com/rollingstart-dev/rollingstart/cmd/rolling")
+	// learner runs, and it does not care where the test's cwd is. The
+	// toolchain is the one running the tests — go test prepends
+	// GOROOT/bin to PATH, but a directly executed test binary has no such
+	// guarantee — with plain "go" as the fallback for a moved GOROOT.
+	goTool := filepath.Join(runtime.GOROOT(), "bin", "go")
+	if _, err := os.Stat(goTool); err != nil {
+		goTool = "go"
+	}
+	build := exec.Command(goTool, "build", "-o", binary, "github.com/rollingstart-dev/rollingstart/cmd/rolling")
 	build.Stderr = os.Stderr
 	if err := build.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "e2e: building rolling:", err)
@@ -65,11 +74,20 @@ func scrubGitEnv() {
 }
 
 // runOptions is where and how the binary runs. The zero value runs it in
-// the test's working directory with the test's environment and no stdin.
+// an empty temporary directory — never the test process's own cwd, which is
+// inside this repository: a doctor test that forgot dir would otherwise
+// probe the real checkout and pass. env entries are appended to the test's
+// environment plus NO_COLOR=1, so a developer's CLICOLOR_FORCE cannot put
+// ANSI into an assertion; later entries win. stdin's zero value is a nil
+// pipe — immediate EOF — which is not the same thing as a blank line "\n";
+// the difference will matter for destructive-operation prompts. timeout
+// bounds the run (default 60s) so a hung binary is a named failure rather
+// than the package deadline's crash.
 type runOptions struct {
-	dir   string
-	env   []string // KEY=value entries appended to the test's environment
-	stdin string
+	dir     string
+	env     []string
+	stdin   string
+	timeout time.Duration
 }
 
 // result is what the binary did, kept apart: assertions about a report on
@@ -87,9 +105,18 @@ type result struct {
 // external one — which has no exit status a test could honestly assert on.
 func rolling(t *testing.T, opts runOptions, args ...string) result {
 	t.Helper()
-	cmd := exec.CommandContext(t.Context(), binary, args...)
+	timeout := opts.timeout
+	if timeout == 0 {
+		timeout = 60 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, binary, args...)
 	cmd.Dir = opts.dir
-	cmd.Env = append(os.Environ(), opts.env...)
+	if cmd.Dir == "" {
+		cmd.Dir = t.TempDir()
+	}
+	cmd.Env = append(append(os.Environ(), "NO_COLOR=1"), opts.env...)
 	if opts.stdin != "" {
 		cmd.Stdin = strings.NewReader(opts.stdin)
 	}

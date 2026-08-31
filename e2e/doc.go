@@ -8,7 +8,9 @@
 // TestMain builds the binary into a temporary directory and removes it after
 // a normal run; a test that panics crashes the process first and leaves it
 // under $TMPDIR/rollingstart-e2e-*. The build is not race-instrumented even
-// under go test -race: the detector covers the harness, not the CLI.
+// under go test -race — the detector covers the harness, not the CLI — and
+// the package is Unix-only, deliberately: so is the product (the runner's
+// process-group contract), and the binary is built without an .exe suffix.
 //
 // Before any test runs, the host's git configuration and every inherited
 // GIT_* variable are removed from the process, so a developer's own
