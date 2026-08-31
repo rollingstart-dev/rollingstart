@@ -5,4 +5,8 @@
 [commands]
 build = "go build ./..."
 test  = "go test ./..."
-lint  = "go vet ./..."
+# gofmt -l lists the files that need formatting and exits 0 for a clean or
+# a dirty tree — non-zero only when it cannot parse or read a file. So: a
+# failing gofmt propagates its own status, and a non-empty listing fails
+# lint with the listing as the output. The same logic as CI's gofmt step.
+lint  = 'go vet ./... && { files=$(gofmt -l .) || exit $?; [ -z "$files" ] || { echo "files need gofmt:"; echo "$files"; exit 1; }; }'

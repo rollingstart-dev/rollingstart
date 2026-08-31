@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -159,4 +160,23 @@ func TestLoadMissing(t *testing.T) {
 			t.Fatalf("Load: %v, want ErrNotFound", err)
 		}
 	})
+}
+
+// TestLoadThisRepositoryDefinition loads the repository's own definition.
+// It is the reference instance other authors will copy, and
+// docs/workflow.md claims it mirrors CI; the probe self-test loads it too,
+// but only in CI. A typo in it must fail go test everywhere rather than
+// survive until someone runs doctor.
+func TestLoadThisRepositoryDefinition(t *testing.T) {
+	inst, err := Load(filepath.Join("..", "..", Path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, c := range inst.Commands() {
+		names = append(names, c.Name)
+	}
+	if want := []string{"build", "test", "lint"}; !slices.Equal(names, want) {
+		t.Errorf("commands = %v, want %v", names, want)
+	}
 }
