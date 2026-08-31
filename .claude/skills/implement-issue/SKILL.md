@@ -108,7 +108,15 @@ Base chaining keeps `gh pr merge` available and is how this repo stacks.
 **For architecture and infrastructure:** the ADR (from `/refine-issue` or written
 now) replaces step 1, and step 5 updates it with what was learned.
 
-### 6. Open the PR
+### 6. Pre-push review, then open the PR
+
+Before any push that changes behavior, run the local review from
+[`CLAUDE.md`](../../../CLAUDE.md) § Rules: spawn a code-review sub-agent on
+the Opus model (`claude-opus-5`) over the outgoing diff — `git diff main`,
+including anything uncommitted that will ship — reviewing against
+[`REVIEW.md`](../../../REVIEW.md), the milestone plan, and the relevant ADRs,
+and have it verify each finding before reporting. Fix the real ones, re-run
+the gate, then push. A review-round fix is a push and gets its own review.
 
 One sub-issue → one branch → one PR. Never bundle.
 
@@ -152,7 +160,9 @@ If all are closed:
    closeout
 3. **Tick the parent's verification checkboxes**
 4. **Flip the plan's sub-scope heading** `[PENDING]` → `[COMPLETE]` in
-   [`docs/plans/`](../../../docs/plans/)
+   [`docs/plans/`](../../../docs/plans/). This is a small docs change —
+   directly on `main`, its own PR, or folded into the next sub-scope's first
+   PR. Ask which, and note it in the closeout
 5. **Close the parent** with a summary: sub-issue → PR table, verification
    confirmation, and tracked deferrals
 
@@ -162,9 +172,11 @@ approval before pushing the plan change and before closing.
 ## Important
 
 - **Never commit or push without explicit approval.**
-- **Review your own diff before pushing.** Read it as a reviewer would, against
-  [`REVIEW.md`](../../../REVIEW.md). It is cheaper than a CI round-trip and much
-  cheaper than a review round.
+- **Before any push to GitHub, run the local pre-push code review** — the rule
+  and its calibration live in [`CLAUDE.md`](../../../CLAUDE.md) § Rules
+  ("Every push that changes behavior gets a local code review first"). Read
+  your own diff as a reviewer would first; it is cheaper than a CI round-trip
+  and much cheaper than a review round.
 - **Stop on surprises.** An unexpected incompatibility or an uncovered design
   question means stop and ask — do not continue in a possibly wrong direction.
 - **In-flight scope**: apply the three tests in

@@ -44,6 +44,11 @@ branches. Descriptive kebab-case names, optionally prefixed with the milestone
 scope (`m1.2/command-runner`). No issue numbers in branch names — link with
 `Closes #N` in the PR body.
 
+A small, isolated change with no issue behind it — the milestone plan when
+`/plan-milestone` commits it, a plan status flip at closeout, a guidance edit
+— may land directly on `main` instead of through a PR. The agent asks which
+landing the maintainer wants; it never assumes.
+
 ## Issues
 
 ### Ready criteria
@@ -118,6 +123,12 @@ writing the next. Upper layers get written against reviewed contracts.
 stacks.
 
 PR bodies carry `Closes #N`, a summary of what and why, and a test plan.
+
+Every push that changes behavior gets a local code review first — a
+sub-agent on the Opus model over the outgoing diff, against
+[`REVIEW.md`](../REVIEW.md), the plan, and the ADRs — and the review's real
+findings are fixed before the push. The rule and its calibration are in
+[`CLAUDE.md`](../CLAUDE.md) § Rules.
 
 ### CI
 

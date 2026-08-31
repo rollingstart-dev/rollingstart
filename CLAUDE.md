@@ -67,7 +67,39 @@ Coach observations feed the profile; only grader verdicts move the skill graph.
 Keep that seam intact — it is the whole non-sycophancy argument.
 
 **One issue → one branch → one PR.** For large scopes, base-chained stacks.
-Never GitHub's native stacked PRs.
+Never GitHub's native stacked PRs. A small, isolated change with no issue
+behind it — a milestone plan, a plan status flip, a guidance edit — may
+instead be committed directly to `main`; ask which landing the maintainer
+wants rather than assuming either.
+
+**Every push that changes behavior gets a local code review first.** Spawn a
+code-review sub-agent on the Opus model (`claude-opus-5`) over the outgoing
+diff — reviewing against [`REVIEW.md`](REVIEW.md), the milestone plan in
+[`docs/plans/`](docs/plans/), and the relevant ADRs — and fix the real
+findings before pushing. The gate is the push, not finishing the work: a
+review-round fix is a push and gets its own review, however small the fix
+felt; and a push the maintainer defers ("don't push yet") runs its review
+when the push happens, not when the code was written. Exempt only pushes
+that change no behavior at all — comment wording, test renames, doc prose —
+because a rule that fires on a one-word comment fix is a rule that gets
+skipped when it matters.
+
+**Code review lives on three surfaces — triage all of them.** Inline per-file
+comments (`gh api repos/rollingstart-dev/rollingstart/pulls/<N>/comments`),
+review summary bodies (`gh pr view <N> --json reviews`), and the PR-level
+conversation (`gh api repos/rollingstart-dev/rollingstart/issues/<N>/comments`).
+The review bot posts whole-PR findings as conversation comments, so an empty
+inline list plus green checks is not review-clean — a substantive finding may
+be sitting in the conversation tab. Check all three before declaring a review
+triaged or replying "no comments".
+
+**Answer review findings where they were raised.** Reply to each inline
+comment in its own thread
+(`gh api repos/rollingstart-dev/rollingstart/pulls/<N>/comments -X POST -f body='…' -F in_reply_to=<id>`)
+with the disposition and the fixing commit; reserve PR-level comments for
+whole-PR feedback. A PR-level digest leaves every inline thread visibly
+unanswered, and whoever merges must then reconstruct which threads are
+addressed instead of reading each thread's reply.
 
 **Write commit bodies you'd want a new hire to learn from.** This repo is meant
 to become an instance of its own tool, so its history is teaching material.
