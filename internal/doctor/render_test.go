@@ -284,7 +284,7 @@ Instance command health
 		},
 		want: oneGreen + `
 Instance command health
-  healthy        build      go build ./... && echo done                1.0s
+  healthy        build      go build ./... && echo done               1.0s
   healthy        lint       go vet ./... && { files=$(gofmt -l .) |…  1m1s
 `,
 	},
