@@ -37,3 +37,26 @@ func TestProbesGreenOnThisRepository(t *testing.T) {
 		}
 	}
 }
+
+// TestProbeNamesShareOneRegister pins the rendering decision from
+// docs/reference/rolling-doctor.md: names are prose, in the documented
+// order, so they sit in one register in doctor's column. The config key
+// core.autocrlf stays in the finding, where it is the thing to fix.
+func TestProbeNamesShareOneRegister(t *testing.T) {
+	isolateGitConfig(t)
+	dir := initRepo(t)
+	if err := os.MkdirAll(filepath.Join(dir, ".rollingstart"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	write(t, dir, ".rollingstart/instance.toml", "")
+	gitIn(t, dir, "add", "-A")
+	gitIn(t, dir, "commit", "-q", "-m", "init")
+	want := []string{"git repository", "working tree", "line endings", "instance definition", "file watcher"}
+	probes := []func(context.Context, string) Result{GitRepo, CleanTree, AutoCRLF, InstanceConfig, Watcher}
+	for i, probe := range probes {
+		res := probe(context.Background(), dir)
+		if res.Name != want[i] {
+			t.Errorf("probe %d Name = %q, want %q", i, res.Name, want[i])
+		}
+	}
+}
