@@ -52,7 +52,7 @@ one package and is fully re-derivable from this table.
 
 ## Sub-scopes
 
-### 1.1 — Instance configuration [PENDING]
+### 1.1 — Instance configuration [COMPLETE]
 
 **Goal.** Load and validate `.rollingstart/instance.toml` into a typed config,
 with errors precise enough for doctor to display verbatim.
@@ -79,14 +79,14 @@ with errors precise enough for doctor to display verbatim.
 
 **Verification.**
 
-- [ ] Table-driven tests cover: minimal valid, all four commands, zero commands,
+- [x] Table-driven tests cover: minimal valid, all four commands, zero commands,
       unknown key, TOML syntax error, missing file, empty command string
-- [ ] Error messages for the failure cases include position information
-- [ ] `gofmt`, `go vet`, `go test ./...` clean
+- [x] Error messages for the failure cases include position information
+- [x] `gofmt`, `go vet`, `go test ./...` clean
 
 ---
 
-### 1.2 — Command runner [PENDING]
+### 1.2 — Command runner [COMPLETE]
 
 **Goal.** Run one human-authored shell command and report what happened with
 enough fidelity to name failures accurately.
@@ -111,15 +111,15 @@ enough fidelity to name failures accurately.
 
 **Verification.**
 
-- [ ] Tests exercise all four outcomes using synthetic commands (`true`,
+- [x] Tests exercise all four outcomes using synthetic commands (`true`,
       `false`, a nonexistent binary, a sleep against a short timeout)
-- [ ] Output-bounding behavior tested: oversized output keeps the tail
-- [ ] Tests pass on both Linux and macOS in CI
-- [ ] `gofmt`, `go vet`, `go test ./...` clean
+- [x] Output-bounding behavior tested: oversized output keeps the tail
+- [x] Tests pass on both Linux and macOS in CI
+- [x] `gofmt`, `go vet`, `go test ./...` clean
 
 ---
 
-### 1.3 — Harness probes [PENDING]
+### 1.3 — Harness probes [COMPLETE]
 
 **Goal.** Implement the blocking-section probes: git repository present,
 working tree clean, `core.autocrlf` sane, `instance.toml` parses, and a
@@ -149,11 +149,11 @@ synthetic file event the watcher must observe.
 
 **Verification.**
 
-- [ ] Probes tested against temp git repos in every state they classify
+- [x] Probes tested against temp git repos in every state they classify
       (no repo, dirty tree, each autocrlf value, each config failure)
-- [ ] Watcher probe test proves both the event-received and the timeout path
-- [ ] A probe run on this repository itself comes back all green
-- [ ] `gofmt`, `go vet`, `go test ./...` clean
+- [x] Watcher probe test proves both the event-received and the timeout path
+- [x] A probe run on this repository itself comes back all green
+- [x] `gofmt`, `go vet`, `go test ./...` clean
 
 ---
 
