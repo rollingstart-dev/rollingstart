@@ -22,18 +22,18 @@ first row of the report says so.
 exceeds it is shut down along with everything it spawned — SIGTERM first, then
 SIGKILL to the whole process group.
 
-`--verbose` prints every command's captured output, not only the failing
-ones', and prints all of it rather than the last twenty lines.
+`--verbose` prints every command's captured output, not only the unhealthy
+ones', and all of it rather than the last twenty lines.
 
 The root `--no-tty` flag has no effect on doctor: its output is already plain
 text.
 
 ## The report
 
-Two sections, plain text, no color — readable in any terminal and in a CI log.
-Harness rows use `ok` and `FAIL`; instance rows use the words that name what
-actually happened. The vocabularies differ on purpose: `FAIL` blocks,
-`failing` informs.
+Two sections, plain text, no color — readable in any terminal and in a CI log
+— with a blank line between them. Harness rows use `ok` and `FAIL`; instance
+rows use the words that name what actually happened. The vocabularies differ
+on purpose: `FAIL` blocks, `failing` informs.
 
 ### Harness preconditions
 
@@ -63,6 +63,16 @@ Harness preconditions
   ok    file watcher         file events are delivered
 ```
 
+A finding that spans lines — the loader reports every unknown key, one per
+line — continues under its own column:
+
+```
+Harness preconditions
+  ok    git repository       inside a git work tree
+  FAIL  instance definition  .rollingstart/instance.toml:2:1: unknown key "biuld"
+                             .rollingstart/instance.toml:3:1: unknown key "tset"
+```
+
 Any `FAIL` in this section is blocking: nothing can proceed and no lesson can
 be served. Doctor still runs the second section when it can, because a learner
 with a dirty tree also wants to know whether `pnpm` is installed.
@@ -76,13 +86,13 @@ listed.
 
 ```
 Instance command health
-  healthy        build      go build ./...        1.2s
-  failing        test       go test ./...         exit 1 after 4.3s
+  healthy        build      go build ./...  1.2s
+  failing        test       go test ./...   exit 1 after 4.3s
     --- FAIL: TestLoad (0.00s)
         instance_test.go:31: Load: open x: no such file or directory
     FAIL
     FAIL	github.com/rollingstart-dev/rollingstart/internal/instance	0.012s
-  not installed  lint       pnpm lint             exit 127 after 0.0s
+  not installed  lint       pnpm lint       exit 127 after 0.0s
     sh: line 1: pnpm: command not found
 ```
 
@@ -93,11 +103,27 @@ installed** (exit 127 or 126 — the binary is missing or not executable, the
 "pnpm is not installed" case), **timed out** (exceeded `--timeout`). Anything
 but `healthy` prints the last twenty lines of the command's combined output
 beneath the row, indented; the end of the output is where toolchains put the
-verdict.
+verdict. When more was captured than shown, a first line says how many lines
+were cut and that `--verbose` shows them all. The capture itself is bounded —
+the runner keeps the last 64 KB — and when that bound dropped the earliest
+output, a line says so in either mode, because `--verbose` cannot bring it
+back:
 
 ```
-  timed out      test       pnpm test             5m0s, process group terminated
+    … (earlier output not captured)
+    … (5 more lines captured; --verbose shows all)
 ```
+
+```
+  timed out      test       pnpm test  5m0s, process group terminated
+```
+
+Two rarer endings have their own words: a command killed by a signal the
+harness did not send — an OOM kill, a stray Ctrl-C in another pane — reads
+`killed by signal 9 (killed) after 4.3s`, and one whose shell could not start
+at all reads `could not start`, with the start error beneath. A shell string
+longer than forty characters is cut with an ellipsis in its column; the full
+string is in the instance definition.
 
 Red here is informational. A codebase instance's first lesson is frequently
 "get this running for local dev", and the harness cannot tell a broken
@@ -117,7 +143,7 @@ than pretending the instance is healthy or broken.
 
 ```
 Instance command health
-  nothing declared: .rollingstart/instance.toml has no [commands]
+  nothing declared: .rollingstart/instance.toml declares no commands
 ```
 
 A definition that declares no commands is valid, and this is what it looks

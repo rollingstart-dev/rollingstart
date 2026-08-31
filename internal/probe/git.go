@@ -66,8 +66,12 @@ func CleanTree(ctx context.Context, dir string) Result {
 // Boolean classification is delegated back to git (--type=bool) so every
 // spelling git accepts — 0, no, off, a valueless key — reads exactly the
 // way git will read it, instead of replicating the boolean table here.
+//
+// The finding is named "line endings": probe names are prose, one register
+// in doctor's column, and the config key stays in the message, where it is
+// the thing to fix.
 func AutoCRLF(ctx context.Context, dir string) Result {
-	const name = "core.autocrlf"
+	const name = "line endings"
 	out, err := runGit(ctx, dir, "config", "--get", "core.autocrlf")
 	var exit *gitError
 	switch {
