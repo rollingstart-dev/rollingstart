@@ -141,6 +141,10 @@ own [`.rollingstart/instance.toml`](../.rollingstart/instance.toml) declares
 the same build, test, and lint checks, so a run of the instance's commands
 covers everything CI does except `go mod tidy -diff` and the macOS leg.
 
+`go test ./...` includes the [`e2e`](../e2e/) package, which builds the
+`rolling` binary once per run and executes it against fixture repositories —
+the binary's contract, tested the way a learner meets it.
+
 ### Merging
 
 Squash merge to `main`. Delete the branch after.
