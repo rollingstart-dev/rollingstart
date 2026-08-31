@@ -132,8 +132,12 @@ findings are fixed before the push. The rule and its calibration are in
 
 ### CI
 
-`go build ./...`, `go vet ./...`, `go test ./...` on Linux and macOS, plus
-`go mod tidy -diff`. All must pass before merge.
+`go build ./...`, `go vet ./...`, `gofmt -l .` (any file it lists fails the
+run, and the listing is the failure message), and `go test ./...` on Linux and
+macOS, plus `go mod tidy -diff`. All must pass before merge. The repository's
+own [`.rollingstart/instance.toml`](../.rollingstart/instance.toml) declares
+the same build, test, and lint checks, so a run of the instance's commands
+covers everything CI does except `go mod tidy -diff` and the macOS leg.
 
 ### Merging
 
