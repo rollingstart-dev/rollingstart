@@ -83,6 +83,7 @@ routes around what you've already proven.
 - [Roadmap](docs/roadmap.md) — decision record, architecture, milestones, risks
 - [Landscape](docs/landscape.md) — what else exists and why this is different
 - [Workflow](docs/workflow.md) — how work happens here, in public
+- [rolling doctor](docs/reference/rolling-doctor.md) — the readiness check
 - [Decisions](docs/decisions/) — ADRs
 - [Contributing](CONTRIBUTING.md)
 
