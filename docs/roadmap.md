@@ -263,8 +263,9 @@ Public repo, adapter documentation, contributing guide, instance authoring guide
 
 **Silent watcher failure across the WSL2 boundary.** A repo on `C:` watched from
 WSL2 receives no inotify events at all. The coach would sit there looking healthy
-and never fire. *Mitigation:* M1's synthetic-event probe, and refuse to start the
-coach if it fails.
+and never fire. *Mitigation:* M1's synthetic-event probe — shipped, with the
+timeout path forced deterministically in tests on both platforms — and refuse
+to start the coach if it fails (M5).
 
 **Generation assumes rich commit history.** Both our instance repos are
 unrepresentative — uceap3's commit bodies explain domain reasoning and cite prior
