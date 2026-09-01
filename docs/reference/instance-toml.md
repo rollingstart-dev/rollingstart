@@ -23,6 +23,9 @@ test      = "pnpm test"
 lint      = "pnpm lint"
 ```
 
+A complete, commented example for a real target is in
+[`examples/rallly/`](../../examples/rallly/).
+
 Four keys are recognized: `build`, `typecheck`, `test`, and `lint`. Each is
 optional. Each value is a shell command, written by a human and reviewed like
 any other code in the repository.

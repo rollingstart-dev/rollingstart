@@ -197,7 +197,7 @@ it as the `rolling doctor` command.
 
 ---
 
-### 1.5 — Validation against Rallly [PENDING]
+### 1.5 — Validation against Rallly [COMPLETE]
 
 **Goal.** Prove the milestone exit criterion against a real target, and feed
 what breaks back into the tools.
@@ -223,10 +223,10 @@ what breaks back into the tools.
 
 **Verification.**
 
-- [ ] Both transcripts (broken-env and healthy-env) attached to the PR
-- [ ] Every red line in the broken-env transcript names its actual cause
-- [ ] Follow-up issues filed for anything not absorbed
-- [ ] `gofmt`, `go vet`, `go test ./...` clean
+- [x] Both transcripts (broken-env and healthy-env) attached to the PR
+- [x] Every red line in the broken-env transcript names its actual cause
+- [x] Follow-up issues filed for anything not absorbed
+- [x] `gofmt`, `go vet`, `go test ./...` clean
 
 ## Explicitly deferred
 

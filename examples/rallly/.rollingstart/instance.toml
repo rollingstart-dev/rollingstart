@@ -1,0 +1,14 @@
+# Rolling Start instance definition for Rallly — github.com/lukevella/rallly.
+#
+# Copy this directory into a Rallly clone as .rollingstart/ and run
+# `rolling doctor` there. Schema v0 carries commands only
+# (docs/reference/instance-toml.md); each value is the pnpm script Rallly
+# itself uses, so what doctor runs is what a Rallly contributor runs.
+[commands]
+build     = "pnpm build"
+typecheck = "pnpm type-check"
+# Unit tests only. Rallly's integration suite needs the dev stack, which
+# makes it an operation — a lifecycle ritual, arriving with M2 — rather
+# than a health check of the working copy.
+test      = "pnpm test:unit"
+lint      = "pnpm check"

@@ -180,3 +180,21 @@ func TestLoadThisRepositoryDefinition(t *testing.T) {
 		t.Errorf("commands = %v, want %v", names, want)
 	}
 }
+
+// TestLoadRallyExample: the example definition is the first one an instance
+// author sees, and it must parse — a typo there teaches the wrong lesson.
+func TestLoadRallyExample(t *testing.T) {
+	inst, err := Load(filepath.Join("..", "..", "examples", "rallly", ".rollingstart", "instance.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Command{
+		{Name: "build", Cmd: "pnpm build"},
+		{Name: "typecheck", Cmd: "pnpm type-check"},
+		{Name: "test", Cmd: "pnpm test:unit"},
+		{Name: "lint", Cmd: "pnpm check"},
+	}
+	if got := inst.Commands(); !slices.Equal(got, want) {
+		t.Errorf("Commands() = %v, want %v", got, want)
+	}
+}
