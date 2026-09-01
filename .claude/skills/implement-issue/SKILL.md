@@ -128,8 +128,9 @@ Before any push that changes behavior, run the local review from
 the Opus model (`claude-opus-5`) over the outgoing diff — `git diff main`,
 including anything uncommitted that will ship — reviewing against
 [`REVIEW.md`](../../../REVIEW.md), the milestone plan, and the relevant ADRs,
-and have it verify each finding before reporting. Fix the real ones, re-run
-the gate, then push. A review-round fix is a push and gets its own review.
+and have it verify each finding before reporting — with state-changing
+experiments confined to a scratch copy, per the rule. Fix the real ones,
+re-run the gate, then push. A review-round fix is a push and gets its own review.
 
 One sub-issue → one branch → one PR. Never bundle.
 
