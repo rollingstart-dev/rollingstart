@@ -257,13 +257,126 @@ what breaks back into the tools.
 End-to-end criteria for the milestone as a whole. Sub-scope 1.5 confirms the
 first two directly.
 
-- [ ] The roadmap exit criterion, verbatim: fresh Rallly clone, no pnpm, no
+- [x] The roadmap exit criterion, verbatim: fresh Rallly clone, no pnpm, no
       stack → harness-green, instance-red, failures named accurately; install
       pnpm, stack up → second section green
-- [ ] Every failure line in the broken-environment run names its actual cause —
+- [x] Every failure line in the broken-environment run names its actual cause —
       nothing generic, nothing misattributed
-- [ ] The watcher probe's failure path is exercised in tests, honoring the
+- [x] The watcher probe's failure path is exercised in tests, honoring the
       silent-WSL2-watcher risk this milestone exists to mitigate
-- [ ] CI green on Linux and macOS: `go build`, `go vet`, `go test ./...`,
+- [x] CI green on Linux and macOS: `go build`, `go vet`, `go test ./...`,
       `go mod tidy -diff`
-- [ ] No LLM call anywhere in the milestone
+- [x] No LLM call anywhere in the milestone
+
+## Retrospective
+
+Written at closure (#25), 2026-09-01. M1 ran 2026-08-28 to 2026-09-01:
+eleven PRs of milestone work merged plus the closure's own two, sixteen
+issues closed by the end, no LLM call anywhere.
+
+### Planned vs. delivered
+
+All five sub-scopes shipped, none as a single PR. 1.3 split into the
+contract-and-git-probes half (#8 → #10) and the watcher (#9 → #12); 1.4
+split three ways — report model (#15 → #18), e2e harness (#16 → #19),
+command (#17 → #20) — with the harness promoted to a slice of its own,
+which 1.5 then reused unchanged. Three follow-ups the plan did not
+anticipate: the gofmt gate (#13 → #14), after review noticed a documented
+gate nothing ran; the GIT_DIR notice (#21 → #22), a product decision
+pulled out of a review finding; and #23, the config-relocating sibling,
+closed as not planned with the distinction recorded — state-relocating
+variables made the report about a different repository and earned a note,
+config variables change behaviour git itself exhibits and the probes
+measure truthfully. The repository also became its own first instance
+(`.rollingstart/instance.toml`, #12), which the plan implied but never
+scheduled.
+
+### Decisions made in flight
+
+None met the ADR threshold; each lives in one package or one reference
+page. The ones a future reader will want: an inotify queue overflow is
+delivery evidence, not failure — green with the overflow named (#12); the
+report's two vocabularies, ok/FAIL against healthy/failing/not
+installed/timed out, because one blocks and the other informs (#18); exit
+2 for the caller's own mistakes, made true rather than reworded when
+review measured the documented table lying (#20); paths in findings are
+relative once a repository is found, so the report names what a learner
+can type (#20); overrides are followed, never fought and never silently
+(#22, maintainer decision on #21); the Rallly example declares unit
+tests, not the integration suite — stack-bound suites are operations,
+which arrive with M2 (#24).
+
+### What went wrong
+
+Candour is the point of this section.
+
+- **A red branch reached the remote** (#18). The pre-push gate piped
+  `go test` through `grep`, the pipe's exit status masked a failing
+  golden, and the push went out with the suite red. Caught minutes later
+  by reading, not by process; repaired by follow-up commit, since pushed
+  history is not amended here. The Conventions gate line now requires
+  each tool's own exit status (#28).
+- **A review experiment committed to the live branch** (#19). The
+  pre-push reviewer proved the milestone's most important finding — an
+  inherited GIT_DIR redirects the e2e fixtures at the host repository —
+  by running that exact experiment against the live checkout: a 52-file
+  deletion committed onto the branch under review, restored by hand. The
+  finding shipped as the process-wide environment scrub; the incident
+  shipped as the scratch-copy rule (#28). The same finding, followed to
+  the product side, became #21/#22.
+- **A spec was committed straight to main** during refinement of #4. The
+  direct-to-main rule as first written listed examples that read as a
+  lane; the maintainer's correction — the exception is for changes where
+  a PR would be needless ceremony, and a new spec always deserves the
+  ceremony — produced the rule's current wording and refine-issue's
+  lands-through-a-PR requirement. The spec itself stayed; the process
+  around it changed twice in one day, which is what public process
+  iteration looks like.
+- **The #4 closeout half-fired.** A broken scratch-path fallback closed
+  the tracking issue with an empty comment and committed nothing; the
+  retried commit then swallowed a staged-but-unrelated skill edit under
+  the wrong message, already pushed. Repaired honestly — back-out and
+  re-land — and the shell lessons went to the working agent's memory.
+- **Two parents closed without their plan flips** (#1, #2), found only
+  by #3's closeout sweep. Nothing scheduled the closeout: the trigger
+  was someone remembering. implement-issue now opens with a
+  closeout-debt sweep and last-sub-issue PRs carry the reminder in
+  their bodies.
+
+### Deferred, and where it went
+
+Machine-readable doctor output, `ParseError.Detail()` excerpts, and the
+e2e environment allowlist wait for consumers (the reference page and the
+#19/#22 review threads record the reasoning). GIT_CEILING_DIRECTORIES
+and GIT_COMMON_DIR were declined with reasons on #22's review and #23.
+Operations — including Rallly's integration suite and db rituals — are
+M2's, as planned.
+
+### Patterns to carry forward
+
+- **The pre-push Opus review earned its keep on every PR that had one**:
+  a blocking lint idiom that reported success with the tool missing
+  (#14), four renderer edge cases (#18), the fixture-isolation hole
+  (#19), the symlinked-cwd break and the exit-table lie (#20). Nothing
+  it flagged and we took later proved wrong; two things it suggested and
+  the maintainer declined (#22) stayed declined without regret.
+- **Docs as spec, mechanically enforced.** The reference page's example
+  blocks are renderer output by test; the validation recipe in the
+  Rallly README is the transcript-producing script, verbatim. Drift has
+  nowhere to hide.
+- **The e2e package tests the binary's contract** and imports nothing
+  from internal/ — three review rounds of fixtures later, it is the
+  closest thing the repo has to a user.
+- **Validation as a reproducible, side-effect-free recipe** (maintainer
+  requirement, #24): a throwaway directory, an official image, the
+  target's own compose file. Three runs, three environment lessons, zero
+  doctor gaps.
+
+### Patterns to change
+
+Both changes shipped before this retrospective (#28): gates check exit
+codes, and reviewers get scratch copies. The remaining habit worth
+naming has no rule yet because it may not need one: every incident above
+that was not caught by review was caught by reading output rather than
+trusting a green-looking script — the discipline the exit-code rule
+mechanises for the one place it burned us.
