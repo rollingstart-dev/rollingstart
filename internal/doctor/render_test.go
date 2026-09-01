@@ -348,9 +348,10 @@ func TestDocExamplesAreRendered(t *testing.T) {
 	for i := 1; i < len(blocks); i += 2 { // odd indices are inside fences
 		block := strings.TrimPrefix(blocks[i], "\n")
 		first, _, _ := strings.Cut(block, "\n")
-		// Usage and the interrupted line belong to the command, not the
-		// renderer; everything else on the page is report output.
-		if strings.HasPrefix(first, "rolling doctor") || first == "interrupted" {
+		// Usage, the interrupted line, and the git-override note belong to
+		// the command, not the renderer; everything else on the page is
+		// report output.
+		if strings.HasPrefix(first, "rolling doctor") || strings.HasPrefix(first, "note:") || first == "interrupted" {
 			continue
 		}
 		checked++
@@ -358,8 +359,11 @@ func TestDocExamplesAreRendered(t *testing.T) {
 			t.Errorf("the reference page shows output the renderer does not produce:\n%s", block)
 		}
 	}
-	if checked == 0 {
-		t.Fatal("no report-shaped example blocks found in the reference page")
+	// A floor, not an exact count: additions are welcome, but a drop
+	// below what existed when this was written means a block was silently
+	// exempted from the guard.
+	if checked < 8 {
+		t.Fatalf("only %d report-shaped example blocks checked; 8 existed when this guard was written — was one silently exempted?", checked)
 	}
 }
 
