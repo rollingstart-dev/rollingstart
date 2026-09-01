@@ -40,6 +40,12 @@ harness's `PATH` too. Rolling Start never installs, wraps, or substitutes a
 toolchain; it runs exactly what the instance declares, where the learner's
 environment already runs.
 
+There is no terminal on the other end: doctor captures output as evidence
+and attaches nothing to standard input, so a command that stops to ask a
+question fails or stalls until the timeout — and either way the report
+misnames what happened. Declare the non-interactive form, the same one CI
+runs.
+
 A `[commands]` table with no entries — or a file with no `[commands]` table at
 all — is valid. `rolling doctor` reports that state as "nothing declared"
 rather than as a healthy instance.
@@ -77,10 +83,21 @@ Operation names are ordinary TOML keys; kebab-case reads best. Name the
 ritual, not the script — `reset-db`, not `prisma-migrate-reset` — because the
 name is what a learner is offered.
 
-Write commands that run **without interaction**. The `--force` above disarms
-the tool's own confirmation prompt on purpose: prompting is the harness's
-job, and it prompts once, up front, for the whole operation. A tool prompt
-inside a declared command is invisible and hangs the run.
+Prefer the non-interactive form where the tool offers one. The `--force`
+above disarms prisma's own confirmation prompt on purpose: consent for a
+destructive ritual is the harness's prompt, once, up front — and whether
+the operation runs at all is always the learner's call.
+
+How much further that reaches is a per-role question, and M3 binds it when
+something first executes an operation. An operation the harness runs
+*unattended* — setting a task's declared starting state, or re-verifying a
+task with nobody at the keyboard — must run without interaction: there is
+no one to answer, and the run's exit status is the evidence the harness
+stakes a verdict on. An operation *offered* to the learner — the way out
+of wedged local state — could instead be handed the learner's own
+terminal, prompts and all, the way git hands you your editor. If that
+lands, the schema grows a flag for it; strict parsing makes the addition
+purely additive, and v1 deliberately does not guess it.
 
 Operations are rituals performed *inside* an environment that is already
 running — resetting data, re-seeding, regenerating artifacts. Bringing
