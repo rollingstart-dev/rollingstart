@@ -81,6 +81,10 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	}
 	dir := resolveRoot(ctx, start)
 
+	if note := gitOverrideNote(); note != "" {
+		fmt.Fprintf(out, "%s\n\n", note)
+	}
+
 	var report doctor.Report
 	interrupted := false
 	for _, p := range probes {
@@ -150,6 +154,35 @@ func instanceSection(ctx context.Context, dir string, timeout time.Duration) (do
 		rows = append(rows, doctor.CommandRow{Command: c, Result: res})
 	}
 	return doctor.Ran(rows), false, nil
+}
+
+// gitOverrideNote is the #21 decision: git's state-relocating variables
+// are followed, never fought and never silently — setting them is
+// deliberate, and git honouring them is git behaving as configured. When
+// any of the three is set the report opens with one line saying so;
+// benign git variables (GIT_EDITOR, GIT_PAGER) relocate nothing and
+// produce nothing. Informational only: no red row, no changed exit code.
+func gitOverrideNote() string {
+	var set []string
+	for _, name := range []string{"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"} {
+		if val, ok := os.LookupEnv(name); ok {
+			set = append(set, name+"="+val)
+		}
+	}
+	switch {
+	case len(set) == 0:
+		return ""
+	case len(set) == 1:
+		return fmt.Sprintf("note: %s is set — git operations, and this report, follow it", set[0])
+	case len(set) == 2:
+		return fmt.Sprintf("note: %s and %s are set — git operations, and this report, follow them", set[0], set[1])
+	default:
+		// Generic, not three slots: a variable added to the watch list
+		// must appear, or the note lies by omission — the failure mode
+		// this feature exists to prevent.
+		list := strings.Join(set[:len(set)-1], ", ") + ", and " + set[len(set)-1]
+		return fmt.Sprintf("note: %s are set — git operations, and this report, follow them", list)
+	}
 }
 
 // resolveRoot finds the repository root from start — the directory the
