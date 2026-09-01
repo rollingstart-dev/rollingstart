@@ -81,8 +81,14 @@ diff — reviewing against [`REVIEW.md`](REVIEW.md), the milestone plan in
 findings before pushing. The gate is the push, not finishing the work: a
 review-round fix is a push and gets its own review, however small the fix
 felt; and a push the maintainer defers ("don't push yet") runs its review
-when the push happens, not when the code was written. Exempt only pushes
-that change no behavior at all — comment wording, test renames, doc prose —
+when the push happens, not when the code was written. The reviewer's brief
+confines any state-changing experiment — a poisoned git environment, hooks,
+test runs under unusual env — to a scratch copy of the repository, never
+the live checkout, and the tree is verified (status, log, local config)
+when a review returns: on #19 a reviewer proving a real finding committed a
+52-file deletion onto the live branch with a GIT_DIR experiment. Exempt
+only pushes that change no behavior at all — comment wording, test renames,
+doc prose —
 because a rule that fires on a one-word comment fix is a rule that gets
 skipped when it matters.
 
@@ -113,7 +119,9 @@ question means stop and ask, not guess and continue.
 
 - Go, standard layout, `cmd/` + `internal/`. Cobra with Fang.
 - Test file beside each source file. A separate `e2e` package for end-to-end.
-- `gofmt`, `go vet`, `go test ./...` all clean before any push.
+- `gofmt`, `go vet`, `go test ./...` all clean before any push — each
+  checked by its own exit status, never through a pipe that masks it. A
+  `go test | grep` let a red branch reach the remote on #18.
 - Errors that a command already rendered use `errSilentExit` so Fang doesn't
   stack a styled block on top of the command's own output.
 - Docs carry a light motorsport theme in prose. Never in identifiers —
