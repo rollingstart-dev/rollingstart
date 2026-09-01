@@ -46,6 +46,9 @@ func TestDoctorAllGreen(t *testing.T) {
 	if strings.Contains(res.stdout, "FAIL") {
 		t.Errorf("FAIL in an all-green report:\n%s", res.stdout)
 	}
+	if strings.Contains(res.stdout, "note:") {
+		t.Errorf("a git-override note with nothing overridden:\n%s", res.stdout)
+	}
 	if res.stderr != "" {
 		t.Errorf("stderr = %q, want empty", res.stderr)
 	}
@@ -379,5 +382,71 @@ func waitFor(t *testing.T, within time.Duration, cond func() bool, msg string) {
 			t.Fatal(msg)
 		}
 		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+// TestDoctorGitOverrideNote pins #21's decision end to end: the overrides
+// are followed — the report is about the repository they name — and the
+// note says so above the report. Informational: the exit code is the
+// followed repository's, and nothing else changes.
+func TestDoctorGitOverrideNote(t *testing.T) {
+	here := newRepo(t)
+	commitAll(t, here)
+	elsewhere := newRepo(t)
+	writeDefinition(t, elsewhere, greenDef)
+	commitAll(t, elsewhere)
+
+	res := rolling(t, runOptions{dir: here, env: []string{
+		"GIT_DIR=" + filepath.Join(elsewhere, ".git"),
+		"GIT_WORK_TREE=" + elsewhere,
+	}}, "doctor")
+	if res.code != 0 {
+		t.Fatalf("exit %d, want 0 — the followed repository is healthy\n%s", res.code, res.stdout)
+	}
+	mustContain(t, res.stdout,
+		"note: GIT_DIR="+filepath.Join(elsewhere, ".git")+" and GIT_WORK_TREE="+elsewhere+" are set — git operations, and this report, follow them",
+		"instance definition loaded (2 commands declared)",
+	)
+	if !strings.HasPrefix(res.stdout, "note: ") {
+		t.Errorf("the note does not open the report:\n%s", res.stdout)
+	}
+}
+
+// TestDoctorGitDirAloneIsExplained: GIT_DIR without GIT_WORK_TREE splits
+// the index from the tree, and the working-tree probe reports the split.
+// That finding stays — the probes report what they observe — but the note
+// above the report is its explanation, where before it was a silent lie.
+func TestDoctorGitDirAloneIsExplained(t *testing.T) {
+	here := newRepo(t)
+	writeDefinition(t, here, greenDef)
+	commitAll(t, here)
+	elsewhere := newRepo(t)
+	if err := os.WriteFile(filepath.Join(elsewhere, "other.txt"), []byte("x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	commitAll(t, elsewhere)
+
+	res := rolling(t, runOptions{dir: here, env: []string{"GIT_DIR=" + filepath.Join(elsewhere, ".git")}}, "doctor")
+	if res.code != 1 {
+		t.Fatalf("exit %d, want 1 — the split reads as a dirty tree\n%s", res.code, res.stdout)
+	}
+	mustContain(t, res.stdout,
+		"note: GIT_DIR="+filepath.Join(elsewhere, ".git")+" is set — git operations, and this report, follow it",
+		"FAIL  working tree",
+	)
+}
+
+// TestDoctorBenignGitVarsNoNote: variables that relocate nothing must not
+// produce noise.
+func TestDoctorBenignGitVarsNoNote(t *testing.T) {
+	repo := newRepo(t)
+	writeDefinition(t, repo, greenDef)
+	commitAll(t, repo)
+	res := rolling(t, runOptions{dir: repo, env: []string{"GIT_EDITOR=vim", "GIT_PAGER=less"}}, "doctor")
+	if res.code != 0 {
+		t.Fatalf("exit %d, want 0\n%s", res.code, res.stdout)
+	}
+	if strings.Contains(res.stdout, "note:") {
+		t.Errorf("a note for benign git variables:\n%s", res.stdout)
 	}
 }
