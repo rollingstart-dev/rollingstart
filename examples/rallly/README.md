@@ -33,7 +33,10 @@ Rallly declares `pnpm@10.28.0` (`packageManager`) and node 24 (`engines`).
 The second section of the report goes green after `pnpm install` — and for
 anything that reaches the database, after Rallly's own `pnpm docker:up`.
 Rolling Start never brings the stack up; it reports what the toolchain says
-about the working copy, stack or no stack.
+about the working copy, stack or no stack. For scale: on the validation run
+`build` took about 35 seconds, the first `type-check` 25 and the first
+`test:unit` 8 (sub-second once turbo's cache is warm), `check` 2 — all well
+inside doctor's default five-minute bound.
 
 ## Reproducing the validation
 
@@ -55,21 +58,37 @@ docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
   -v "$W/rallly:/work" -v "$W/rolling:/usr/local/bin/rolling:ro" -w /work \
   node:24 rolling doctor
 
-# Healthy environment: pnpm enabled into the container's own /tmp, the
-# stack up by Rallly's compose file, host networking so localhost ports
-# resolve (Linux; on macOS point Rallly's .env at host.docker.internal).
+# Healthy environment — Rallly's own CONTRIBUTING.md steps, inside the
+# container: pnpm enabled into the container's /tmp (and its store kept
+# out of the checkout, or the tree is dirty), env from the samples with
+# the one required value filled in, prisma generate, then the database
+# reset and seeded against the stack. The stack comes up by Rallly's
+# compose file; host networking makes its localhost ports reachable
+# (Linux — on macOS point the .env files at host.docker.internal).
 docker compose -f "$W/rallly/docker-compose.dev.yml" up -d --wait
 docker run --rm --network host --user "$(id -u):$(id -g)" -e HOME=/tmp \
   -v "$W/rallly:/work" -v "$W/rolling:/usr/local/bin/rolling:ro" -w /work \
-  node:24 sh -c 'COREPACK_HOME=/tmp/corepack corepack enable --install-directory /tmp/bin \
-    && export PATH=/tmp/bin:$PATH && pnpm install && rolling doctor'
+  node:24 sh -c '
+    mkdir -p /tmp/bin && COREPACK_HOME=/tmp/corepack corepack enable --install-directory /tmp/bin
+    export PATH=/tmp/bin:$PATH npm_config_store_dir=/tmp/pnpm-store
+    pnpm install
+    cp apps/web/.env.sample apps/web/.env && cp packages/database/.env.sample packages/database/.env
+    sed -i "s/^SECRET_PASSWORD=$/SECRET_PASSWORD=$(head -c 24 /dev/urandom | base64)/" apps/web/.env
+    pnpm db:generate && pnpm db:reset --force && pnpm db:seed
+    rolling doctor'
 
 # Teardown
 docker compose -f "$W/rallly/docker-compose.dev.yml" down --volumes --remove-orphans
 rm -rf "$W"
 ```
 
-The `--user` and `HOME` flags are not decoration: without them git inside
-the container sees a root process touching a repository owned by your user
-and the first probe goes red with "dubious ownership" — a true finding, but
-not the one being tested.
+Three lines in that recipe were learned the hard way, and each is a true
+finding doctor made about the environment rather than a bug in doctor:
+`--user` and `HOME`, or git inside the container sees a root process touching
+a repository owned by your user and the first probe goes red with "dubious
+ownership"; `npm_config_store_dir`, or pnpm — with `HOME` on a different
+filesystem from the checkout — drops its store *inside* the project, the
+working tree goes red, and biome lints two thousand JSON files; and the
+`SECRET_PASSWORD` line, without which Rallly's build fails env validation
+with `Invalid input` — the sample ships it empty, and CONTRIBUTING's "fill in
+the required values" means exactly that.
