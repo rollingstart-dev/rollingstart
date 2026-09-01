@@ -14,7 +14,9 @@
 #   - Sub-scopes are separated by "---"; the section ends at the next H2
 #
 # Each issue body is prefixed with a link back to the sub-scope's own section in
-# the plan, then the verbatim sub-scope content.
+# the plan, then the sub-scope content — reflowed, because GitHub renders a
+# single newline in an issue body as a hard break, so the plan file's
+# hard-wrapped prose would render jagged. Content is otherwise verbatim.
 
 set -euo pipefail
 
@@ -72,6 +74,27 @@ awk -v dir="$tmpdir" '
 
 [[ -s "$tmpdir/index.tsv" ]] || { echo "No sub-scopes found under '## Sub-scopes' in $plan_file" >&2; exit 1; }
 
+# Join a paragraph's hard-wrapped lines — and a list item's indented
+# continuation lines — into single lines, so GitHub's break-per-newline issue
+# rendering shows paragraphs, not jagged 76-column fragments. Code fences,
+# tables, headings, blockquotes, and blank lines pass through untouched.
+reflow() {
+  awk '
+    function flush() { if (buf != "") { print buf; buf = "" } }
+    /^```/  { flush(); fence = !fence; print; next }
+    fence   { print; next }
+    NF == 0 { flush(); print; next }
+    /^#/ || /^\|/ || /^>/ || /^---+[[:space:]]*$/ { flush(); print; next }
+    /^[[:space:]]*([-*+]|[0-9]+\.) / { flush(); buf = $0; next }
+    {
+      line = $0
+      sub(/^[[:space:]]+/, "", line)
+      buf = (buf == "") ? line : buf " " line
+    }
+    END { flush() }
+  '
+}
+
 while IFS=$'\t' read -r num title slug; do
   body_file="$tmpdir/$num.body.md"
   issue_file="$tmpdir/$num.issue.md"
@@ -80,7 +103,7 @@ while IFS=$'\t' read -r num title slug; do
     printf 'Sub-scope of **[M%s plan](%s#%s)**.\n\n---\n' \
       "$ms_num" "$plan_url" "$slug"
     # Trim trailing blank lines for a clean issue body.
-    awk 'NF {for(i=0;i<held;i++) print ""; held=0; print; next} {held++}' "$body_file"
+    awk 'NF {for(i=0;i<held;i++) print ""; held=0; print; next} {held++}' "$body_file" | reflow
   } > "$issue_file"
 
   issue_url=$(gh issue create \

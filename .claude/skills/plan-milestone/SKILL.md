@@ -99,11 +99,13 @@ created up front. The script resolves it and errors if it's missing.
 
 The script splits `## Sub-scopes` on `### {N}.{M} —` headers, creates one issue
 per sub-scope on the milestone, adds each to the board, and prefixes each body
-with a link back to the plan section.
+with a link back to the plan section. On the way it reflows hard-wrapped
+paragraphs into single lines: GitHub renders each newline in an issue body as a
+hard break, so the plan file's wrapped prose would otherwise render jagged.
 
-**Full-fidelity rule**: sub-scope content is copied verbatim. Do not summarize.
-An agent picking the issue up in a future session must have everything it needs
-without reading anything else.
+**Full-fidelity rule**: sub-scope content is copied in full — reflowed for
+issue rendering, never summarized or trimmed. An agent picking the issue up in
+a future session must have everything it needs without reading anything else.
 
 Milestones carry no due dates. This is a side project; invented dates rot in
 public.
