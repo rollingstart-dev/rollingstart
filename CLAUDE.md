@@ -87,8 +87,8 @@ test runs under unusual env — to a scratch copy of the repository, never
 the live checkout, and the tree is verified (status, log, local config)
 when a review returns: on #19 a reviewer proving a real finding committed a
 52-file deletion onto the live branch with a GIT_DIR experiment. Exempt
-only pushes
-that change no behavior at all — comment wording, test renames, doc prose —
+only pushes that change no behavior at all — comment wording, test renames,
+doc prose —
 because a rule that fires on a one-word comment fix is a rule that gets
 skipped when it matters.
 
