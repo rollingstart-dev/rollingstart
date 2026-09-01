@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -25,8 +26,8 @@ func TestVersion(t *testing.T) {
 // exit, never a silent success or help text on stdout.
 func TestUnknownCommand(t *testing.T) {
 	res := rolling(t, runOptions{}, "frobnicate")
-	if res.code == 0 {
-		t.Fatal("exit 0 for an unknown command")
+	if res.code != 2 {
+		t.Fatalf("exit %d for an unknown command, want 2 — the usage exit", res.code)
 	}
 	if !strings.Contains(res.stderr, "frobnicate") {
 		t.Errorf("stderr does not name the unknown command:\n%s", res.stderr)
@@ -63,8 +64,18 @@ func TestFixtureHelpers(t *testing.T) {
 // inherited state, scrubs again, and checks that a fixture reaches only
 // itself and the other repository is untouched.
 func TestInheritedGitStateIsScrubbed(t *testing.T) {
+	// Serial only: t.Setenv and t.Parallel are mutually exclusive, and the
+	// scrub below mutates the process environment.
 	elsewhere := t.TempDir()
 	gitIn(t, elsewhere, "init", "-q")
+	gitIn(t, elsewhere, "config", "user.email", "victim@example.invalid")
+	gitIn(t, elsewhere, "config", "user.name", "Victim")
+	if err := os.WriteFile(filepath.Join(elsewhere, "important.txt"), []byte("staged work\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitIn(t, elsewhere, "add", "-A")
+	gitIn(t, elsewhere, "commit", "-q", "-m", "important")
+	head := gitOut(t, elsewhere, "rev-parse", "HEAD")
 	t.Setenv("GIT_DIR", filepath.Join(elsewhere, ".git"))
 	t.Setenv("GIT_INDEX_FILE", filepath.Join(elsewhere, ".git", "index"))
 	scrubGitEnv()
@@ -75,10 +86,10 @@ func TestInheritedGitStateIsScrubbed(t *testing.T) {
 	if got := gitOut(t, repo, "rev-parse", "--git-dir"); got != ".git" {
 		t.Errorf("fixture git dir = %q, want .git — the fixture reached another repository", got)
 	}
-	if got := gitOut(t, elsewhere, "rev-list", "--count", "--all"); got != "0" {
-		t.Errorf("the other repository has %s commit(s), want 0 — the fixture wrote into it", got)
+	if got := gitOut(t, elsewhere, "rev-parse", "HEAD"); got != head {
+		t.Errorf("the other repository's HEAD moved: %s -> %s — the fixture committed into it", head, got)
 	}
 	if got := gitOut(t, elsewhere, "status", "--porcelain"); got != "" {
-		t.Errorf("the other repository's index changed:\n%s", got)
+		t.Errorf("the other repository's index or tree changed — a leak would stage deletions:\n%s", got)
 	}
 }

@@ -18,9 +18,15 @@ root: the instance definition lives there, and it is the directory the coach
 will watch. When there is no repository, the root is `dir` itself and the
 first row of the report says so.
 
+Once a repository is found, paths in findings are relative to where doctor
+ran — `.rollingstart/instance.toml:2:1: …` from the root,
+`../.rollingstart/instance.toml:2:1: …` from a subdirectory — so what the
+report names is what the learner can type. With no repository, the report
+shows `dir` as it was given.
+
 `--timeout` bounds each declared command; the default is `5m`. A command that
 exceeds it is shut down along with everything it spawned — SIGTERM first, then
-SIGKILL to the whole process group.
+SIGKILL to the whole process group. `--timeout 0` disables the bound entirely.
 
 `--verbose` prints every command's captured output, not only the unhealthy
 ones', and all of it rather than the last twenty lines.
@@ -155,7 +161,7 @@ like: an explicit state, not an empty section that reads as green.
 |---|---|
 | `0` | Every harness precondition holds. Instance rows may say anything. |
 | `1` | At least one harness precondition failed. |
-| `2` | Usage error — an unknown flag, more than one argument. |
+| `2` | Usage error — an unknown flag or command, a bad flag value, a directory argument that does not exist, more than one argument. |
 | `130` | Interrupted before the report finished. |
 
 Instance-section red alone exits zero: it is a learnable state, not breakage,
