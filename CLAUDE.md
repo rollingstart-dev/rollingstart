@@ -16,7 +16,7 @@ before proposing anything structural.
 ## Status
 
 - [x] **M0 — Skeleton.** Go module, CLI surface, CI. `rolling version` runs.
-- [ ] **M1 — `rolling doctor`.** Instance config, command runner, environment probes.
+- [x] **M1 — `rolling doctor`.** Instance config, command runner, environment probes. `rolling doctor` runs.
 - [ ] M2 — Formats, hand-authored
 - [ ] M3 — The loop, deterministic
 - [ ] M4 — Judge
@@ -31,6 +31,8 @@ before proposing anything structural.
 |---|---|
 | `cmd/rolling/` | CLI surface. One file per command. |
 | `internal/` | The engine. Never parses a target language. |
+| `e2e/` | End-to-end tests of the built binary. Imports nothing from `internal/`. |
+| `examples/` | Instance definitions for real targets (Rallly), copyable as documented. |
 | `docs/design.md` | What this is, and why |
 | `docs/roadmap.md` | Decision record, architecture, milestones, risks |
 | `docs/landscape.md` | Competitors, and what we take from them |
