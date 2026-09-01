@@ -38,19 +38,6 @@ gh api repos/{owner}/{repo}/issues/{number}/sub_issues -q '.[] | "#\(.number) [\
 as comments. Also read the **parent tracking issue's** comments; fold-ins are
 supposed to live in bodies, but this is the backstop for the ones that don't.
 
-**Sweep for closeout debt before starting new work.** A parent's closeout
-(step 7) waits on a merge that often happens with no session running, so
-nothing fires it — #1 and #2 were closed without their plan flips, found only
-by a later coherence sweep. The sweep makes the trigger self-healing: any open
-issue whose sub-issues are all closed is a pending closeout, and it comes
-before branching for anything new (with the usual approvals).
-
-```sh
-for n in $(gh issue list --state open --json number --jq '.[].number'); do
-  gh api "repos/{owner}/{repo}/issues/$n/sub_issues"     --jq "select(length > 0) | select(all(.[]; .state == "closed")) | "#$n closeout pending"" 2>/dev/null
-done
-```
-
 **If the issue has linked sub-issues it is a tracking issue.** Do not implement
 it in one branch. Take the first open sub-issue that has its dependencies
 satisfied, and confirm the choice with the user before branching.
@@ -146,12 +133,6 @@ gh pr create --title "{title}" --body "Closes #{number}
 
 The PR closes the **sub-issue**, not the parent. Do not add the PR to the board
 separately — the issue row already shows linked PRs.
-
-**When this PR closes the parent's last open sub-issue, say so in the body** —
-"Merging this completes the sub-issues of #{parent}; the parent closeout
-(step 7) follows the merge." The merge often happens in the GitHub UI with no
-session running; the marker makes the merge event itself carry the reminder,
-and the sweep in step 1 is the backstop when it doesn't.
 
 Report the PR URL, then watch CI in the background and read the result when it
 finishes. Never poll in a foreground loop.
