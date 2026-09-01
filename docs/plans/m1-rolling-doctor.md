@@ -157,7 +157,7 @@ synthetic file event the watcher must observe.
 
 ---
 
-### 1.4 — `rolling doctor` command and report [PENDING]
+### 1.4 — `rolling doctor` command and report [COMPLETE]
 
 **Goal.** Wire config, probes, and runner into the two-section report, and ship
 it as the `rolling doctor` command.
@@ -188,12 +188,12 @@ it as the `rolling doctor` command.
 
 **Verification.**
 
-- [ ] End-to-end tests (separate `e2e` package) run the built binary against
+- [x] End-to-end tests (separate `e2e` package) run the built binary against
       fixture repos covering: harness-red, harness-green/instance-red,
       all-green, no-config, zero-commands
-- [ ] Exit codes verified for each fixture state
-- [ ] Docs describe the output actually produced
-- [ ] `gofmt`, `go vet`, `go test ./...` clean
+- [x] Exit codes verified for each fixture state
+- [x] Docs describe the output actually produced
+- [x] `gofmt`, `go vet`, `go test ./...` clean
 
 ---
 
