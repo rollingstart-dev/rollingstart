@@ -181,6 +181,35 @@ interrupted
 — and nothing that did not run is rendered, so an interrupted run is never
 mistaken for a broken environment.
 
+## Git environment overrides
+
+Doctor inherits the environment it was launched from, on purpose: "is `pnpm`
+on your `PATH`" and "what does your `core.autocrlf` chain say" are the
+questions. Git's own state-relocating variables ride along the same way —
+and setting them is deliberate, so doctor follows them rather than fighting
+them. It only refuses to be silent about it. When `GIT_DIR`,
+`GIT_WORK_TREE`, or `GIT_INDEX_FILE` is set, the report opens with a note
+naming what is set:
+
+```
+note: GIT_DIR=/mnt/elsewhere/.git is set — git operations, and this report, follow it
+```
+
+Several set variables are named together in the one line — `GIT_DIR=… and
+GIT_WORK_TREE=… are set — git operations, and this report, follow them`.
+Everything else is unchanged: no red row, no different exit code.
+Commonplace git variables that relocate nothing (`GIT_EDITOR`, `GIT_PAGER`)
+produce no note. One caveat carries over from how doctor runs git: a
+*relative* override value resolves against the root doctor chose, which need
+not be the directory your shell resolved it against — the findings under the
+note say what git actually saw.
+
+One combination deserves its own sentence: `GIT_DIR` alone, without
+`GIT_WORK_TREE`, points git's index somewhere else while the working tree
+stays put, and the working-tree probe will faithfully report the difference
+between the two as uncommitted changes. The note above the report is the
+explanation for that finding.
+
 ## What doctor never does
 
 It never changes git configuration, installs a toolchain, starts a service, or
