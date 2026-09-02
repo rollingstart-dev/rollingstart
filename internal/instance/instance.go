@@ -177,7 +177,7 @@ func Load(path string) (*Instance, error) {
 			return nil, &ParseError{
 				Path: path,
 				Key:  "commands." + c.name,
-				Msg:  fmt.Sprintf("commands.%s is empty: declare a command or remove the key", c.name),
+				Msg:  emptyValueMsg("commands."+c.name, *c.cmd, "declare a command or remove the key"),
 			}
 		}
 		inst.commands = append(inst.commands, Command{Name: c.name, Cmd: *c.cmd})
@@ -222,7 +222,7 @@ func Load(path string) (*Instance, error) {
 			return nil, &ParseError{
 				Path: path,
 				Key:  "operations." + name + ".command",
-				Msg:  fmt.Sprintf("operations.%s.command is empty: declare a command or remove the operation", name),
+				Msg:  emptyValueMsg("operations."+name+".command", *op.Command, "declare a command or remove the operation"),
 			}
 		}
 		inst.operations = append(inst.operations, Operation{Name: name, Cmd: *op.Command, Destructive: op.Destructive})
@@ -236,7 +236,7 @@ func Load(path string) (*Instance, error) {
 			return nil, &ParseError{
 				Path: path,
 				Key:  "corpus.exemplary",
-				Msg:  fmt.Sprintf("corpus.exemplary entry %d is empty: point at a path or remove it", n+1),
+				Msg:  emptyValueMsg(fmt.Sprintf("corpus.exemplary entry %d", n+1), p, "point at a path or remove it"),
 			}
 		}
 		if p != strings.TrimSpace(p) {
@@ -259,7 +259,7 @@ func Load(path string) (*Instance, error) {
 			return nil, &ParseError{
 				Path: path,
 				Key:  "corpus.exemplar-prs",
-				Msg:  fmt.Sprintf("corpus.exemplar-prs entry %d is empty: point at a pull request or remove it", n+1),
+				Msg:  emptyValueMsg(fmt.Sprintf("corpus.exemplar-prs entry %d", n+1), u, "point at a pull request or remove it"),
 			}
 		}
 		if u != strings.TrimSpace(u) {
@@ -286,7 +286,7 @@ func Load(path string) (*Instance, error) {
 			return nil, &ParseError{
 				Path: path,
 				Key:  "corpus.definition-of-ready",
-				Msg:  "corpus.definition-of-ready is empty: point at a document or remove the key",
+				Msg:  emptyValueMsg("corpus.definition-of-ready", *dor, "point at a document or remove the key"),
 			}
 		}
 		if *dor != strings.TrimSpace(*dor) {
@@ -316,6 +316,16 @@ func Load(path string) (*Instance, error) {
 	}
 
 	return inst, nil
+}
+
+// emptyValueMsg words an empty value apart from a whitespace-only one,
+// echoing the latter %q-quoted: "empty" would gaslight an author staring
+// at characters that do not show.
+func emptyValueMsg(what, value, remedy string) string {
+	if value == "" {
+		return fmt.Sprintf("%s is empty: %s", what, remedy)
+	}
+	return fmt.Sprintf("%s %q is only whitespace: %s", what, value, remedy)
 }
 
 // corpusPathReason says why p cannot be a repository-relative pointer, or ""

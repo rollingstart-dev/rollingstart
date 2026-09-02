@@ -128,14 +128,15 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 // local file read.
 func instanceSection(ctx context.Context, dir string, timeout time.Duration) (doctor.InstanceSection, bool, error) {
 	inst, err := instance.Load(filepath.Join(dir, instance.Path))
-	switch {
-	case err != nil:
+	if err != nil {
 		return doctor.Skipped(err.Error()), false, nil
-	case len(inst.Commands()) == 0:
+	}
+	cmds := inst.Commands()
+	if len(cmds) == 0 {
 		return doctor.NothingDeclared(), false, nil
 	}
 	var rows []doctor.CommandRow
-	for _, c := range inst.Commands() {
+	for _, c := range cmds {
 		res, err := runner.Run(ctx, runner.Spec{Command: c.Cmd, Dir: dir, Timeout: timeout})
 		if err != nil {
 			// The runner reserves its error for the caller's own

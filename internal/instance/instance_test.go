@@ -53,6 +53,14 @@ func TestLoadValid(t *testing.T) {
 			toml: "[commands]\n",
 			want: nil,
 		},
+		{
+			// The deliberate asymmetry with the padding rule for names and
+			// paths: a command string goes to sh exactly as written,
+			// padding included.
+			name: "padded command string is stored as written",
+			toml: "[commands]\nbuild = \"  pnpm build  \"\n",
+			want: []Command{{Name: "build", Cmd: "  pnpm build  "}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -112,7 +120,7 @@ func TestLoadInvalid(t *testing.T) {
 		{
 			name:      "whitespace-only command string",
 			toml:      "[commands]\nlint = \"   \"\n",
-			wantInMsg: []string{"commands.lint", "empty"},
+			wantInMsg: []string{"commands.lint", `"   "`, "whitespace"},
 			wantKey:   "commands.lint",
 		},
 		{
@@ -133,7 +141,7 @@ func TestLoadInvalid(t *testing.T) {
 		{
 			name:      "operation with a whitespace-only command",
 			toml:      "[operations.seed-db]\ncommand = \"   \"\n",
-			wantInMsg: []string{"operations.seed-db.command", "empty"},
+			wantInMsg: []string{"operations.seed-db.command", `"   "`, "whitespace"},
 			wantKey:   "operations.seed-db.command",
 		},
 		{
@@ -206,6 +214,14 @@ func TestLoadInvalid(t *testing.T) {
 			wantKey:   "corpus.exemplary",
 		},
 		{
+			// A whitespace-only entry is echoed like a whitespace-only
+			// name: the author is staring at characters that do not show.
+			name:      "whitespace-only exemplary entry",
+			toml:      "[corpus]\nexemplary = [\"   \"]\n",
+			wantInMsg: []string{"corpus.exemplary", "entry 1", `"   "`, "whitespace"},
+			wantKey:   "corpus.exemplary",
+		},
+		{
 			name:      "empty exemplar-prs entry",
 			toml:      "[corpus]\nexemplar-prs = [\"\"]\n",
 			wantInMsg: []string{"corpus.exemplar-prs", "entry 1", "empty"},
@@ -234,10 +250,17 @@ func TestLoadInvalid(t *testing.T) {
 		{
 			// Trailing padding, deliberately: url.Parse would accept this
 			// one, so only the padding rule stands between it and a doctor
-			// note nobody can explain.
+			// note nobody can explain. The echoed value proves the
+			// trailing space reaches the message.
 			name:      "padded exemplar-prs entry",
 			toml:      "[corpus]\nexemplar-prs = [\"https://github.com/x/pull/1 \"]\n",
-			wantInMsg: []string{"corpus.exemplar-prs", "padded"},
+			wantInMsg: []string{"corpus.exemplar-prs", `"https://github.com/x/pull/1 "`, "padded"},
+			wantKey:   "corpus.exemplar-prs",
+		},
+		{
+			name:      "whitespace-only exemplar-prs entry",
+			toml:      "[corpus]\nexemplar-prs = [\"   \"]\n",
+			wantInMsg: []string{"corpus.exemplar-prs", "entry 1", `"   "`, "whitespace"},
 			wantKey:   "corpus.exemplar-prs",
 		},
 		{
@@ -262,6 +285,12 @@ func TestLoadInvalid(t *testing.T) {
 			name:      "padded definition-of-ready",
 			toml:      "[corpus]\ndefinition-of-ready = \" ready.md\"\n",
 			wantInMsg: []string{"corpus.definition-of-ready", `" ready.md"`, "padded"},
+			wantKey:   "corpus.definition-of-ready",
+		},
+		{
+			name:      "whitespace-only definition-of-ready",
+			toml:      "[corpus]\ndefinition-of-ready = \"   \"\n",
+			wantInMsg: []string{"corpus.definition-of-ready", `"   "`, "whitespace"},
 			wantKey:   "corpus.definition-of-ready",
 		},
 	}
@@ -318,6 +347,11 @@ func TestLoadOperations(t *testing.T) {
 			name: "destructive declared false is the same as omitted",
 			toml: "[operations]\nseed-db = { command = \"pnpm db:seed\", destructive = false }\n",
 			want: []Operation{{Name: "seed-db", Cmd: "pnpm db:seed"}},
+		},
+		{
+			name: "padded operation command is stored as written",
+			toml: "[operations]\nseed-db = { command = \"  pnpm db:seed  \" }\n",
+			want: []Operation{{Name: "seed-db", Cmd: "  pnpm db:seed  "}},
 		},
 		{
 			name: "empty operations table declares none",
@@ -407,6 +441,31 @@ func TestLoadCorpus(t *testing.T) {
 			t.Errorf("Corpus() = %+v, want nil lists", got)
 		}
 	})
+}
+
+// TestAccessorsReturnCopies: an Instance stays as validated no matter what
+// a caller does with what the accessors hand out. Each result is mutated
+// and the next call must come back untouched.
+func TestAccessorsReturnCopies(t *testing.T) {
+	inst, err := Load(write(t, "instance.toml",
+		"[commands]\nbuild = \"pnpm build\"\n\n[operations]\nseed-db = { command = \"pnpm db:seed\" }\n\n[corpus]\nexemplary = [\"apps/web\"]\nexemplar-prs = [\"https://github.com/x/pull/1\"]\n"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	inst.Commands()[0].Cmd = "mutated"
+	inst.Operations()[0].Cmd = "mutated"
+	mutated := inst.Corpus()
+	mutated.Exemplary[0] = "mutated"
+	mutated.ExemplarPRs[0] = "mutated"
+	if got := inst.Commands()[0].Cmd; got != "pnpm build" {
+		t.Errorf("Commands()[0].Cmd = %q after mutating a previous result; accessors must return copies", got)
+	}
+	if got := inst.Operations()[0].Cmd; got != "pnpm db:seed" {
+		t.Errorf("Operations()[0].Cmd = %q after mutating a previous result", got)
+	}
+	if got := inst.Corpus(); got.Exemplary[0] != "apps/web" || got.ExemplarPRs[0] != "https://github.com/x/pull/1" {
+		t.Errorf("Corpus() = %+v after mutating a previous result", got)
+	}
 }
 
 // TestDocExamplesLoad keeps docs/reference/instance-toml.md honest: every
