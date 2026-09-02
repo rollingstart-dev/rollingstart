@@ -46,10 +46,11 @@ type Operation struct {
 }
 
 // Corpus is the declared set of corpus pointers. Zero values mean "not
-// declared": validation rejects empty strings and empty entries, so an
-// absent key is the only way a field stays zero. Validation is form-only —
-// whether a pointer's target exists in a given checkout is the doctor's
-// question, not the loader's.
+// declared": validation rejects empty strings and empty entries, and an
+// explicitly empty list is normalized to nil at load because it declares
+// nothing, exactly like an absent key. Validation is form-only — whether a
+// pointer's target exists in a given checkout is the doctor's question, not
+// the loader's.
 type Corpus struct {
 	Exemplary         []string // repository-relative paths worth imitating
 	ExemplarPRs       []string // absolute http(s) URLs of exemplar pull requests
@@ -66,21 +67,27 @@ type Instance struct {
 // Commands returns the declared commands in canonical order: build,
 // typecheck, test, lint. Undeclared commands are absent; a definition
 // declaring none returns an empty slice, which is a valid state the caller
-// is expected to surface rather than treat as healthy.
+// is expected to surface rather than treat as healthy. The slice is the
+// caller's own copy — an Instance stays as validated no matter what a
+// caller does with what the accessors hand out.
 func (i *Instance) Commands() []Command {
-	return i.commands
+	return slices.Clone(i.commands)
 }
 
 // Operations returns the declared operations sorted by name — the canonical
 // order, because a decoded TOML table has no declaration order to preserve.
+// The slice is the caller's own copy.
 func (i *Instance) Operations() []Operation {
-	return i.operations
+	return slices.Clone(i.operations)
 }
 
 // Corpus returns the declared corpus pointers. Lists keep the file's
-// declaration order.
+// declaration order and are the caller's own copies.
 func (i *Instance) Corpus() Corpus {
-	return i.corpus
+	c := i.corpus
+	c.Exemplary = slices.Clone(c.Exemplary)
+	c.ExemplarPRs = slices.Clone(c.ExemplarPRs)
+	return c
 }
 
 // ParseError is a definition that exists but cannot be used. Error() renders
@@ -180,10 +187,17 @@ func Load(path string) (*Instance, error) {
 	// canonical accessor order.
 	for _, name := range slices.Sorted(maps.Keys(doc.Operations)) {
 		if strings.TrimSpace(name) == "" {
+			// A whitespace-only name is echoed back quoted: %q turns the
+			// invisible character the author is staring past into a
+			// visible one.
+			msg := "operations declares an operation with an empty name: name the ritual or remove it"
+			if name != "" {
+				msg = fmt.Sprintf("operations declares an operation whose name %q is only whitespace: name the ritual or remove it", name)
+			}
 			return nil, &ParseError{
 				Path: path,
 				Key:  "operations",
-				Msg:  "operations declares an operation with an empty name: name the ritual or remove it",
+				Msg:  msg,
 			}
 		}
 		op := doc.Operations[name]
@@ -204,12 +218,15 @@ func Load(path string) (*Instance, error) {
 		inst.operations = append(inst.operations, Operation{Name: name, Cmd: *op.Command, Destructive: op.Destructive})
 	}
 
-	for _, p := range doc.Corpus.Exemplary {
+	for n, p := range doc.Corpus.Exemplary {
+		// An empty entry has no value to quote, so its 1-based position
+		// says which one; the other rejections identify themselves by
+		// echoing the offending value.
 		if strings.TrimSpace(p) == "" {
 			return nil, &ParseError{
 				Path: path,
 				Key:  "corpus.exemplary",
-				Msg:  "corpus.exemplary has an empty entry: point at a path or remove it",
+				Msg:  fmt.Sprintf("corpus.exemplary entry %d is empty: point at a path or remove it", n+1),
 			}
 		}
 		if reason := corpusPathReason(p); reason != "" {
@@ -220,12 +237,12 @@ func Load(path string) (*Instance, error) {
 			}
 		}
 	}
-	for _, u := range doc.Corpus.ExemplarPRs {
+	for n, u := range doc.Corpus.ExemplarPRs {
 		if strings.TrimSpace(u) == "" {
 			return nil, &ParseError{
 				Path: path,
 				Key:  "corpus.exemplar-prs",
-				Msg:  "corpus.exemplar-prs has an empty entry: point at a pull request or remove it",
+				Msg:  fmt.Sprintf("corpus.exemplar-prs entry %d is empty: point at a pull request or remove it", n+1),
 			}
 		}
 		// url.Parse alone is not the check: it accepts a bare repository
@@ -257,8 +274,15 @@ func Load(path string) (*Instance, error) {
 		}
 		inst.corpus.DefinitionOfReady = *dor
 	}
-	inst.corpus.Exemplary = doc.Corpus.Exemplary
-	inst.corpus.ExemplarPRs = doc.Corpus.ExemplarPRs
+	// An explicitly empty list declares nothing, the same as an absent key;
+	// normalizing to nil gives consumers one "nothing declared" state
+	// instead of two.
+	if len(doc.Corpus.Exemplary) > 0 {
+		inst.corpus.Exemplary = doc.Corpus.Exemplary
+	}
+	if len(doc.Corpus.ExemplarPRs) > 0 {
+		inst.corpus.ExemplarPRs = doc.Corpus.ExemplarPRs
+	}
 
 	return inst, nil
 }

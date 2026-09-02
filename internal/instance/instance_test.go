@@ -80,6 +80,13 @@ func TestLoadInvalid(t *testing.T) {
 		// wantInMsg must all appear in err.Error(); position info is part of
 		// the contract, so failures with a location assert on "line".
 		wantInMsg []string
+		// wantKey, when set, asserts the error is a *ParseError carrying
+		// this Key — the loader's own value checks promise the type and
+		// the offending key, and a bare fmt.Errorf with the right wording
+		// would break the consumer the probe layer plans to become.
+		// Decoder-produced failures leave it empty: their keys are the
+		// library's to shape.
+		wantKey string
 	}{
 		{
 			name:      "unknown top-level table",
@@ -100,11 +107,13 @@ func TestLoadInvalid(t *testing.T) {
 			name:      "empty command string",
 			toml:      "[commands]\nbuild = \"\"\n",
 			wantInMsg: []string{"commands.build", "empty"},
+			wantKey:   "commands.build",
 		},
 		{
 			name:      "whitespace-only command string",
 			toml:      "[commands]\nlint = \"   \"\n",
 			wantInMsg: []string{"commands.lint", "empty"},
+			wantKey:   "commands.lint",
 		},
 		{
 			// The missing key and the empty value are different mistakes,
@@ -113,26 +122,33 @@ func TestLoadInvalid(t *testing.T) {
 			name:      "operation without a command",
 			toml:      "[operations]\nreset-db = { destructive = true }\n",
 			wantInMsg: []string{"operations.reset-db", "no command"},
+			wantKey:   "operations.reset-db",
 		},
 		{
 			name:      "operation with an empty command",
 			toml:      "[operations.reset-db]\ncommand = \"\"\n",
 			wantInMsg: []string{"operations.reset-db.command", "empty"},
+			wantKey:   "operations.reset-db.command",
 		},
 		{
 			name:      "operation with a whitespace-only command",
 			toml:      "[operations.seed-db]\ncommand = \"   \"\n",
 			wantInMsg: []string{"operations.seed-db.command", "empty"},
+			wantKey:   "operations.seed-db.command",
 		},
 		{
 			name:      "operation with an empty name",
 			toml:      "[operations]\n\"\" = { command = \"pnpm db:seed\" }\n",
 			wantInMsg: []string{"operations", "empty name"},
+			wantKey:   "operations",
 		},
 		{
+			// The quoted echo matters here: the author is staring at a key
+			// that looks non-empty on screen.
 			name:      "operation with a whitespace-only name",
 			toml:      "[operations.\"  \"]\ncommand = \"pnpm db:seed\"\n",
-			wantInMsg: []string{"operations", "empty name"},
+			wantInMsg: []string{"operations", `"  "`, "whitespace"},
+			wantKey:   "operations",
 		},
 		{
 			// Strictness reaches inside the named sub-tables: a typo in an
@@ -148,19 +164,24 @@ func TestLoadInvalid(t *testing.T) {
 			wantInMsg: []string{"exemplray", "2:"},
 		},
 		{
+			// An empty entry has no value to echo, so the error counts:
+			// entry 2, 1-based, the way an author reads the list.
 			name:      "empty exemplary entry",
 			toml:      "[corpus]\nexemplary = [\"apps/web\", \"\"]\n",
-			wantInMsg: []string{"corpus.exemplary", "empty"},
+			wantInMsg: []string{"corpus.exemplary", "entry 2", "empty"},
+			wantKey:   "corpus.exemplary",
 		},
 		{
 			name:      "absolute exemplary path",
 			toml:      "[corpus]\nexemplary = [\"/srv/app\"]\n",
 			wantInMsg: []string{"corpus.exemplary", "/srv/app", "repository-relative"},
+			wantKey:   "corpus.exemplary",
 		},
 		{
 			name:      "exemplary path escaping the repository",
 			toml:      "[corpus]\nexemplary = [\"../secrets\"]\n",
 			wantInMsg: []string{"corpus.exemplary", "../secrets", "escapes"},
+			wantKey:   "corpus.exemplary",
 		},
 		{
 			// Escape detection resolves the path first: a prefix that dips
@@ -168,11 +189,13 @@ func TestLoadInvalid(t *testing.T) {
 			name:      "exemplary path escaping through an interior dot-dot",
 			toml:      "[corpus]\nexemplary = [\"apps/../../other\"]\n",
 			wantInMsg: []string{"corpus.exemplary", "apps/../../other", "escapes"},
+			wantKey:   "corpus.exemplary",
 		},
 		{
 			name:      "empty exemplar-prs entry",
 			toml:      "[corpus]\nexemplar-prs = [\"\"]\n",
-			wantInMsg: []string{"corpus.exemplar-prs", "empty"},
+			wantInMsg: []string{"corpus.exemplar-prs", "entry 1", "empty"},
+			wantKey:   "corpus.exemplar-prs",
 		},
 		{
 			// net/url happily parses a bare repository path as a relative
@@ -180,31 +203,37 @@ func TestLoadInvalid(t *testing.T) {
 			name:      "exemplar-prs entry that is a bare path",
 			toml:      "[corpus]\nexemplar-prs = [\"lukevella/rallly/pull/1502\"]\n",
 			wantInMsg: []string{"corpus.exemplar-prs", "lukevella/rallly/pull/1502", "http(s) URL"},
+			wantKey:   "corpus.exemplar-prs",
 		},
 		{
 			name:      "exemplar-prs entry with the wrong scheme",
 			toml:      "[corpus]\nexemplar-prs = [\"ftp://github.com/x/pull/1\"]\n",
 			wantInMsg: []string{"corpus.exemplar-prs", "ftp://github.com/x/pull/1", "http(s) URL"},
+			wantKey:   "corpus.exemplar-prs",
 		},
 		{
 			name:      "exemplar-prs entry without a host",
 			toml:      "[corpus]\nexemplar-prs = [\"https:///pull/1\"]\n",
 			wantInMsg: []string{"corpus.exemplar-prs", "http(s) URL"},
+			wantKey:   "corpus.exemplar-prs",
 		},
 		{
 			name:      "empty definition-of-ready",
 			toml:      "[corpus]\ndefinition-of-ready = \"\"\n",
 			wantInMsg: []string{"corpus.definition-of-ready", "empty"},
+			wantKey:   "corpus.definition-of-ready",
 		},
 		{
 			name:      "absolute definition-of-ready",
 			toml:      "[corpus]\ndefinition-of-ready = \"/etc/ready.md\"\n",
 			wantInMsg: []string{"corpus.definition-of-ready", "repository-relative"},
+			wantKey:   "corpus.definition-of-ready",
 		},
 		{
 			name:      "definition-of-ready escaping the repository",
 			toml:      "[corpus]\ndefinition-of-ready = \"../ready.md\"\n",
 			wantInMsg: []string{"corpus.definition-of-ready", "escapes"},
+			wantKey:   "corpus.definition-of-ready",
 		},
 	}
 	for _, tt := range tests {
@@ -224,6 +253,15 @@ func TestLoadInvalid(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), path) {
 				t.Errorf("error %q does not name the file %q", err, path)
+			}
+			if tt.wantKey != "" {
+				var pe *ParseError
+				if !errors.As(err, &pe) {
+					t.Fatalf("error %v is not a *ParseError", err)
+				}
+				if pe.Key != tt.wantKey {
+					t.Errorf("Key = %q, want %q", pe.Key, tt.wantKey)
+				}
 			}
 		})
 	}
@@ -329,6 +367,17 @@ func TestLoadCorpus(t *testing.T) {
 			t.Errorf("Corpus() = %+v, want the zero value", got)
 		}
 	})
+	t.Run("explicitly empty lists declare nothing", func(t *testing.T) {
+		// Normalized to the zero value at load: [] and an absent key both
+		// declare nothing, and consumers get one state to check, not two.
+		inst, err := Load(write(t, "instance.toml", "[corpus]\nexemplary = []\nexemplar-prs = []\n"))
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if got := inst.Corpus(); got.Exemplary != nil || got.ExemplarPRs != nil {
+			t.Errorf("Corpus() = %+v, want nil lists", got)
+		}
+	})
 }
 
 // TestDocExamplesLoad keeps docs/reference/instance-toml.md honest: every
@@ -343,8 +392,11 @@ func TestDocExamplesLoad(t *testing.T) {
 	blocks := strings.Split(string(doc), "```")
 	checked := 0
 	for i := 1; i < len(blocks); i += 2 { // odd indices are inside fences
-		block, ok := strings.CutPrefix(blocks[i], "toml\n")
-		if !ok {
+		// The language is the info string's first word, so a block that
+		// grows fence attributes later still gets checked rather than
+		// silently slipping under the floor.
+		info, block, found := strings.Cut(blocks[i], "\n")
+		if fields := strings.Fields(info); !found || len(fields) == 0 || fields[0] != "toml" {
 			continue
 		}
 		checked++
