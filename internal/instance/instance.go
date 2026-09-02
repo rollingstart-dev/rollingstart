@@ -11,7 +11,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
+	"net/url"
 	"os"
+	slashpath "path"
+	"slices"
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
@@ -31,9 +35,32 @@ type Command struct {
 	Cmd  string // the shell command, exactly as the author wrote it
 }
 
+// Operation is one declared lifecycle ritual — reset the database, re-run
+// the seeder. In this milestone operations are declared and validated only;
+// nothing executes one until the session loop (M3), which honours
+// Destructive by prompting.
+type Operation struct {
+	Name        string // the author's key under [operations]
+	Cmd         string // the shell command, exactly as the author wrote it
+	Destructive bool   // discards state; running one always prompts first
+}
+
+// Corpus is the declared set of corpus pointers. Zero values mean "not
+// declared": validation rejects empty strings and empty entries, so an
+// absent key is the only way a field stays zero. Validation is form-only —
+// whether a pointer's target exists in a given checkout is the doctor's
+// question, not the loader's.
+type Corpus struct {
+	Exemplary         []string // repository-relative paths worth imitating
+	ExemplarPRs       []string // absolute http(s) URLs of exemplar pull requests
+	DefinitionOfReady string   // repository-relative path to the readiness document
+}
+
 // Instance is a parsed and validated instance definition.
 type Instance struct {
-	commands []Command
+	commands   []Command
+	operations []Operation
+	corpus     Corpus
 }
 
 // Commands returns the declared commands in canonical order: build,
@@ -42,6 +69,18 @@ type Instance struct {
 // is expected to surface rather than treat as healthy.
 func (i *Instance) Commands() []Command {
 	return i.commands
+}
+
+// Operations returns the declared operations sorted by name — the canonical
+// order, because a decoded TOML table has no declaration order to preserve.
+func (i *Instance) Operations() []Operation {
+	return i.operations
+}
+
+// Corpus returns the declared corpus pointers. Lists keep the file's
+// declaration order.
+func (i *Instance) Corpus() Corpus {
+	return i.corpus
 }
 
 // ParseError is a definition that exists but cannot be used. Error() renders
@@ -69,10 +108,12 @@ func (e *ParseError) Detail() string {
 	return e.detail
 }
 
-// document mirrors schema v0, documented in docs/reference/instance-toml.md.
-// Strict decoding rejects everything outside it. Command fields are pointers
-// so that a key declared with an empty value — always a mistake — is
-// distinguishable from a key not declared at all.
+// document mirrors schema v1, documented in docs/reference/instance-toml.md.
+// Strict decoding rejects everything outside it, including unknown keys
+// inside the map-valued [operations.<name>] sub-tables. String fields whose
+// absence and emptiness are different mistakes — commands, an operation's
+// command, definition-of-ready — are pointers so the two stay
+// distinguishable after decoding.
 type document struct {
 	Commands struct {
 		Build     *string `toml:"build"`
@@ -80,6 +121,19 @@ type document struct {
 		Test      *string `toml:"test"`
 		Lint      *string `toml:"lint"`
 	} `toml:"commands"`
+	Operations map[string]operationDoc `toml:"operations"`
+	Corpus     struct {
+		Exemplary         []string `toml:"exemplary"`
+		ExemplarPRs       []string `toml:"exemplar-prs"`
+		DefinitionOfReady *string  `toml:"definition-of-ready"`
+	} `toml:"corpus"`
+}
+
+// operationDoc is one [operations.<name>] table as decoded, before
+// validation.
+type operationDoc struct {
+	Command     *string `toml:"command"`
+	Destructive bool    `toml:"destructive"`
 }
 
 // Load reads and validates the instance definition at path.
@@ -121,7 +175,107 @@ func Load(path string) (*Instance, error) {
 		}
 		inst.commands = append(inst.commands, Command{Name: c.name, Cmd: *c.cmd})
 	}
+
+	// Sorted names make the first error deterministic as well as fixing the
+	// canonical accessor order.
+	for _, name := range slices.Sorted(maps.Keys(doc.Operations)) {
+		if strings.TrimSpace(name) == "" {
+			return nil, &ParseError{
+				Path: path,
+				Key:  "operations",
+				Msg:  "operations declares an operation with an empty name: name the ritual or remove it",
+			}
+		}
+		op := doc.Operations[name]
+		if op.Command == nil {
+			return nil, &ParseError{
+				Path: path,
+				Key:  "operations." + name,
+				Msg:  fmt.Sprintf("operations.%s has no command: declare one or remove the operation", name),
+			}
+		}
+		if strings.TrimSpace(*op.Command) == "" {
+			return nil, &ParseError{
+				Path: path,
+				Key:  "operations." + name + ".command",
+				Msg:  fmt.Sprintf("operations.%s.command is empty: declare a command or remove the operation", name),
+			}
+		}
+		inst.operations = append(inst.operations, Operation{Name: name, Cmd: *op.Command, Destructive: op.Destructive})
+	}
+
+	for _, p := range doc.Corpus.Exemplary {
+		if strings.TrimSpace(p) == "" {
+			return nil, &ParseError{
+				Path: path,
+				Key:  "corpus.exemplary",
+				Msg:  "corpus.exemplary has an empty entry: point at a path or remove it",
+			}
+		}
+		if reason := corpusPathReason(p); reason != "" {
+			return nil, &ParseError{
+				Path: path,
+				Key:  "corpus.exemplary",
+				Msg:  fmt.Sprintf("corpus.exemplary entry %q %s", p, reason),
+			}
+		}
+	}
+	for _, u := range doc.Corpus.ExemplarPRs {
+		if strings.TrimSpace(u) == "" {
+			return nil, &ParseError{
+				Path: path,
+				Key:  "corpus.exemplar-prs",
+				Msg:  "corpus.exemplar-prs has an empty entry: point at a pull request or remove it",
+			}
+		}
+		// url.Parse alone is not the check: it accepts a bare repository
+		// path as a relative URL. The spec pins absolute, http(s), and a
+		// nonempty host — and nothing ever fetches one.
+		parsed, err := url.Parse(u)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+			return nil, &ParseError{
+				Path: path,
+				Key:  "corpus.exemplar-prs",
+				Msg:  fmt.Sprintf("corpus.exemplar-prs entry %q is not an absolute http(s) URL: write the pull request's full address", u),
+			}
+		}
+	}
+	if dor := doc.Corpus.DefinitionOfReady; dor != nil {
+		if strings.TrimSpace(*dor) == "" {
+			return nil, &ParseError{
+				Path: path,
+				Key:  "corpus.definition-of-ready",
+				Msg:  "corpus.definition-of-ready is empty: point at a document or remove the key",
+			}
+		}
+		if reason := corpusPathReason(*dor); reason != "" {
+			return nil, &ParseError{
+				Path: path,
+				Key:  "corpus.definition-of-ready",
+				Msg:  fmt.Sprintf("corpus.definition-of-ready %q %s", *dor, reason),
+			}
+		}
+		inst.corpus.DefinitionOfReady = *dor
+	}
+	inst.corpus.Exemplary = doc.Corpus.Exemplary
+	inst.corpus.ExemplarPRs = doc.Corpus.ExemplarPRs
+
 	return inst, nil
+}
+
+// corpusPathReason says why p cannot be a repository-relative pointer, or ""
+// when it can. Corpus paths are slash-separated and repository-relative by
+// definition, so this is the pure path package, not filepath: OS semantics
+// never enter into it. Escape detection cleans first, so an interior ..
+// that climbs out of the root is caught wherever it sits.
+func corpusPathReason(p string) string {
+	if slashpath.IsAbs(p) {
+		return "is absolute: corpus paths are repository-relative"
+	}
+	if c := slashpath.Clean(p); c == ".." || strings.HasPrefix(c, "../") {
+		return "escapes the repository: corpus paths stay inside the root"
+	}
+	return ""
 }
 
 // parseError maps the decoder's failures onto ParseError. Unknown keys arrive
