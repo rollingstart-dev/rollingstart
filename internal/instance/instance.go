@@ -200,6 +200,16 @@ func Load(path string) (*Instance, error) {
 				Msg:  msg,
 			}
 		}
+		// A padded name looks identical to its trimmed form everywhere it
+		// is displayed and matches it nowhere it is compared — a verifier
+		// selecting reset-db could never reach " reset-db".
+		if name != strings.TrimSpace(name) {
+			return nil, &ParseError{
+				Path: path,
+				Key:  "operations",
+				Msg:  fmt.Sprintf("operations declares an operation whose name %q is padded with whitespace: remove the padding", name),
+			}
+		}
 		op := doc.Operations[name]
 		if op.Command == nil {
 			return nil, &ParseError{
@@ -229,6 +239,13 @@ func Load(path string) (*Instance, error) {
 				Msg:  fmt.Sprintf("corpus.exemplary entry %d is empty: point at a path or remove it", n+1),
 			}
 		}
+		if p != strings.TrimSpace(p) {
+			return nil, &ParseError{
+				Path: path,
+				Key:  "corpus.exemplary",
+				Msg:  fmt.Sprintf("corpus.exemplary entry %q is padded with whitespace: remove the padding", p),
+			}
+		}
 		if reason := corpusPathReason(p); reason != "" {
 			return nil, &ParseError{
 				Path: path,
@@ -243,6 +260,13 @@ func Load(path string) (*Instance, error) {
 				Path: path,
 				Key:  "corpus.exemplar-prs",
 				Msg:  fmt.Sprintf("corpus.exemplar-prs entry %d is empty: point at a pull request or remove it", n+1),
+			}
+		}
+		if u != strings.TrimSpace(u) {
+			return nil, &ParseError{
+				Path: path,
+				Key:  "corpus.exemplar-prs",
+				Msg:  fmt.Sprintf("corpus.exemplar-prs entry %q is padded with whitespace: remove the padding", u),
 			}
 		}
 		// url.Parse alone is not the check: it accepts a bare repository
@@ -263,6 +287,13 @@ func Load(path string) (*Instance, error) {
 				Path: path,
 				Key:  "corpus.definition-of-ready",
 				Msg:  "corpus.definition-of-ready is empty: point at a document or remove the key",
+			}
+		}
+		if *dor != strings.TrimSpace(*dor) {
+			return nil, &ParseError{
+				Path: path,
+				Key:  "corpus.definition-of-ready",
+				Msg:  fmt.Sprintf("corpus.definition-of-ready %q is padded with whitespace: remove the padding", *dor),
 			}
 		}
 		if reason := corpusPathReason(*dor); reason != "" {

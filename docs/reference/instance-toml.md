@@ -110,7 +110,10 @@ An operation that omits `command`, or declares it empty or whitespace-only,
 is an error naming the offending operation — and the missing key and the
 empty value are different mistakes, worded apart. An empty or
 whitespace-only operation *name* is an error for the same reason an empty
-command is: it declares nothing. Duplicate names need no rule of ours —
+command is: it declares nothing. A name padded with leading or trailing
+whitespace is rejected too: `" reset-db"` looks identical to `reset-db`
+everywhere it is displayed and matches it nowhere it is compared.
+Duplicate names need no rule of ours —
 TOML itself rejects a redefined key, with a position. Like the value checks
 in `[commands]`, these run after decoding, so they name the file and the
 offending key rather than a line and column; only the decoder's own
@@ -155,7 +158,10 @@ definition-of-ready = ".rollingstart/ready.md"
 
 All keys are optional, and form is checked at load, naming the offending
 key. An empty-string entry is an error — a pointer at nothing declares an
-intention and then says nothing. A path must stay inside the repository:
+intention and then says nothing. So is a value padded with leading or
+trailing whitespace: the padding is invisible where the mistake is made
+and load-bearing where the pointer is resolved. A path must stay inside
+the repository:
 absolute paths and paths that climb out through `..` are rejected. An
 `exemplar-prs` entry must parse as an *absolute* URL with scheme `http` or
 `https` and a nonempty host — stated that precisely because `net/url`

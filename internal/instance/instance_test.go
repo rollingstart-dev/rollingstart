@@ -151,6 +151,14 @@ func TestLoadInvalid(t *testing.T) {
 			wantKey:   "operations",
 		},
 		{
+			// A padded name looks identical to reset-db on screen and can
+			// never be selected by it.
+			name:      "operation with a padded name",
+			toml:      "[operations.\" reset-db\"]\ncommand = \"pnpm db:reset\"\n",
+			wantInMsg: []string{"operations", `" reset-db"`, "padded"},
+			wantKey:   "operations",
+		},
+		{
 			// Strictness reaches inside the named sub-tables: a typo in an
 			// operation's keys fails with the decoder's position, like every
 			// other unknown key.
@@ -192,6 +200,12 @@ func TestLoadInvalid(t *testing.T) {
 			wantKey:   "corpus.exemplary",
 		},
 		{
+			name:      "padded exemplary entry",
+			toml:      "[corpus]\nexemplary = [\" apps/web\"]\n",
+			wantInMsg: []string{"corpus.exemplary", `" apps/web"`, "padded"},
+			wantKey:   "corpus.exemplary",
+		},
+		{
 			name:      "empty exemplar-prs entry",
 			toml:      "[corpus]\nexemplar-prs = [\"\"]\n",
 			wantInMsg: []string{"corpus.exemplar-prs", "entry 1", "empty"},
@@ -218,6 +232,15 @@ func TestLoadInvalid(t *testing.T) {
 			wantKey:   "corpus.exemplar-prs",
 		},
 		{
+			// Trailing padding, deliberately: url.Parse would accept this
+			// one, so only the padding rule stands between it and a doctor
+			// note nobody can explain.
+			name:      "padded exemplar-prs entry",
+			toml:      "[corpus]\nexemplar-prs = [\"https://github.com/x/pull/1 \"]\n",
+			wantInMsg: []string{"corpus.exemplar-prs", "padded"},
+			wantKey:   "corpus.exemplar-prs",
+		},
+		{
 			name:      "empty definition-of-ready",
 			toml:      "[corpus]\ndefinition-of-ready = \"\"\n",
 			wantInMsg: []string{"corpus.definition-of-ready", "empty"},
@@ -233,6 +256,12 @@ func TestLoadInvalid(t *testing.T) {
 			name:      "definition-of-ready escaping the repository",
 			toml:      "[corpus]\ndefinition-of-ready = \"../ready.md\"\n",
 			wantInMsg: []string{"corpus.definition-of-ready", "escapes"},
+			wantKey:   "corpus.definition-of-ready",
+		},
+		{
+			name:      "padded definition-of-ready",
+			toml:      "[corpus]\ndefinition-of-ready = \" ready.md\"\n",
+			wantInMsg: []string{"corpus.definition-of-ready", `" ready.md"`, "padded"},
 			wantKey:   "corpus.definition-of-ready",
 		},
 	}
