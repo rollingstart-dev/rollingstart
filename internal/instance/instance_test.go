@@ -106,6 +106,106 @@ func TestLoadInvalid(t *testing.T) {
 			toml:      "[commands]\nlint = \"   \"\n",
 			wantInMsg: []string{"commands.lint", "empty"},
 		},
+		{
+			// The missing key and the empty value are different mistakes,
+			// worded apart — the spec's rule, asserted by the two cases
+			// below wanting different substrings.
+			name:      "operation without a command",
+			toml:      "[operations]\nreset-db = { destructive = true }\n",
+			wantInMsg: []string{"operations.reset-db", "no command"},
+		},
+		{
+			name:      "operation with an empty command",
+			toml:      "[operations.reset-db]\ncommand = \"\"\n",
+			wantInMsg: []string{"operations.reset-db.command", "empty"},
+		},
+		{
+			name:      "operation with a whitespace-only command",
+			toml:      "[operations.seed-db]\ncommand = \"   \"\n",
+			wantInMsg: []string{"operations.seed-db.command", "empty"},
+		},
+		{
+			name:      "operation with an empty name",
+			toml:      "[operations]\n\"\" = { command = \"pnpm db:seed\" }\n",
+			wantInMsg: []string{"operations", "empty name"},
+		},
+		{
+			name:      "operation with a whitespace-only name",
+			toml:      "[operations.\"  \"]\ncommand = \"pnpm db:seed\"\n",
+			wantInMsg: []string{"operations", "empty name"},
+		},
+		{
+			// Strictness reaches inside the named sub-tables: a typo in an
+			// operation's keys fails with the decoder's position, like every
+			// other unknown key.
+			name:      "unknown key inside an operation",
+			toml:      "[operations.reset-db]\ncommand = \"pnpm db:reset\"\ndestrutive = true\n",
+			wantInMsg: []string{"destrutive", "3:"},
+		},
+		{
+			name:      "unknown key inside corpus",
+			toml:      "[corpus]\nexemplray = [\"apps/web\"]\n",
+			wantInMsg: []string{"exemplray", "2:"},
+		},
+		{
+			name:      "empty exemplary entry",
+			toml:      "[corpus]\nexemplary = [\"apps/web\", \"\"]\n",
+			wantInMsg: []string{"corpus.exemplary", "empty"},
+		},
+		{
+			name:      "absolute exemplary path",
+			toml:      "[corpus]\nexemplary = [\"/srv/app\"]\n",
+			wantInMsg: []string{"corpus.exemplary", "/srv/app", "repository-relative"},
+		},
+		{
+			name:      "exemplary path escaping the repository",
+			toml:      "[corpus]\nexemplary = [\"../secrets\"]\n",
+			wantInMsg: []string{"corpus.exemplary", "../secrets", "escapes"},
+		},
+		{
+			// Escape detection resolves the path first: a prefix that dips
+			// back out through an interior .. is still an escape.
+			name:      "exemplary path escaping through an interior dot-dot",
+			toml:      "[corpus]\nexemplary = [\"apps/../../other\"]\n",
+			wantInMsg: []string{"corpus.exemplary", "apps/../../other", "escapes"},
+		},
+		{
+			name:      "empty exemplar-prs entry",
+			toml:      "[corpus]\nexemplar-prs = [\"\"]\n",
+			wantInMsg: []string{"corpus.exemplar-prs", "empty"},
+		},
+		{
+			// net/url happily parses a bare repository path as a relative
+			// URL — the spec pins absolute, http(s), nonempty host.
+			name:      "exemplar-prs entry that is a bare path",
+			toml:      "[corpus]\nexemplar-prs = [\"lukevella/rallly/pull/1502\"]\n",
+			wantInMsg: []string{"corpus.exemplar-prs", "lukevella/rallly/pull/1502", "http(s) URL"},
+		},
+		{
+			name:      "exemplar-prs entry with the wrong scheme",
+			toml:      "[corpus]\nexemplar-prs = [\"ftp://github.com/x/pull/1\"]\n",
+			wantInMsg: []string{"corpus.exemplar-prs", "ftp://github.com/x/pull/1", "http(s) URL"},
+		},
+		{
+			name:      "exemplar-prs entry without a host",
+			toml:      "[corpus]\nexemplar-prs = [\"https:///pull/1\"]\n",
+			wantInMsg: []string{"corpus.exemplar-prs", "http(s) URL"},
+		},
+		{
+			name:      "empty definition-of-ready",
+			toml:      "[corpus]\ndefinition-of-ready = \"\"\n",
+			wantInMsg: []string{"corpus.definition-of-ready", "empty"},
+		},
+		{
+			name:      "absolute definition-of-ready",
+			toml:      "[corpus]\ndefinition-of-ready = \"/etc/ready.md\"\n",
+			wantInMsg: []string{"corpus.definition-of-ready", "repository-relative"},
+		},
+		{
+			name:      "definition-of-ready escaping the repository",
+			toml:      "[corpus]\ndefinition-of-ready = \"../ready.md\"\n",
+			wantInMsg: []string{"corpus.definition-of-ready", "escapes"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -126,6 +226,137 @@ func TestLoadInvalid(t *testing.T) {
 				t.Errorf("error %q does not name the file %q", err, path)
 			}
 		})
+	}
+}
+
+func TestLoadOperations(t *testing.T) {
+	tests := []struct {
+		name string
+		toml string
+		want []Operation
+	}{
+		{
+			// The inline form and the header form are the same document;
+			// declaration order is reversed against the expected order
+			// because names, sorted, are the canonical order — a TOML
+			// table has no declaration order once decoded.
+			name: "both forms, sorted by name",
+			toml: "[operations]\nseed-db = { command = \"pnpm db:seed\" }\n\n[operations.reset-db]\ncommand = \"pnpm db:reset --force\"\ndestructive = true\n",
+			want: []Operation{
+				{Name: "reset-db", Cmd: "pnpm db:reset --force", Destructive: true},
+				{Name: "seed-db", Cmd: "pnpm db:seed"},
+			},
+		},
+		{
+			name: "destructive declared false is the same as omitted",
+			toml: "[operations]\nseed-db = { command = \"pnpm db:seed\", destructive = false }\n",
+			want: []Operation{{Name: "seed-db", Cmd: "pnpm db:seed"}},
+		},
+		{
+			name: "empty operations table declares none",
+			toml: "[operations]\n",
+			want: nil,
+		},
+		{
+			name: "v0 file declares none",
+			toml: "[commands]\ntest = \"pnpm test\"\n",
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			inst, err := Load(write(t, "instance.toml", tt.toml))
+			if err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+			if got := inst.Operations(); !slices.Equal(got, tt.want) {
+				t.Errorf("Operations() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestOperationNamespaceIsSeparate: an operation may be called build without
+// colliding with [commands].build — anything that later selects one says
+// which kind it selects.
+func TestOperationNamespaceIsSeparate(t *testing.T) {
+	inst, err := Load(write(t, "instance.toml",
+		"[commands]\nbuild = \"pnpm build\"\n\n[operations]\nbuild = { command = \"pnpm generate\" }\n"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if want := []Command{{Name: "build", Cmd: "pnpm build"}}; !slices.Equal(inst.Commands(), want) {
+		t.Errorf("Commands() = %v, want %v", inst.Commands(), want)
+	}
+	if want := []Operation{{Name: "build", Cmd: "pnpm generate"}}; !slices.Equal(inst.Operations(), want) {
+		t.Errorf("Operations() = %v, want %v", inst.Operations(), want)
+	}
+}
+
+func TestLoadCorpus(t *testing.T) {
+	t.Run("all keys, lists in declaration order", func(t *testing.T) {
+		inst, err := Load(write(t, "instance.toml",
+			"[corpus]\nexemplary = [\"packages/database\", \"apps/web/src/features/poll\"]\nexemplar-prs = [\"https://github.com/lukevella/rallly/pull/1502\"]\ndefinition-of-ready = \".rollingstart/ready.md\"\n"))
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		got := inst.Corpus()
+		if want := []string{"packages/database", "apps/web/src/features/poll"}; !slices.Equal(got.Exemplary, want) {
+			t.Errorf("Exemplary = %v, want %v (declaration order)", got.Exemplary, want)
+		}
+		if want := []string{"https://github.com/lukevella/rallly/pull/1502"}; !slices.Equal(got.ExemplarPRs, want) {
+			t.Errorf("ExemplarPRs = %v, want %v", got.ExemplarPRs, want)
+		}
+		if want := ".rollingstart/ready.md"; got.DefinitionOfReady != want {
+			t.Errorf("DefinitionOfReady = %q, want %q", got.DefinitionOfReady, want)
+		}
+	})
+	t.Run("v0 file declares nothing", func(t *testing.T) {
+		inst, err := Load(write(t, "instance.toml", "[commands]\ntest = \"pnpm test\"\n"))
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if got := inst.Corpus(); got.Exemplary != nil || got.ExemplarPRs != nil || got.DefinitionOfReady != "" {
+			t.Errorf("Corpus() = %+v, want the zero value", got)
+		}
+	})
+	t.Run("empty corpus table declares nothing", func(t *testing.T) {
+		inst, err := Load(write(t, "instance.toml", "[corpus]\n"))
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if got := inst.Corpus(); got.Exemplary != nil || got.ExemplarPRs != nil || got.DefinitionOfReady != "" {
+			t.Errorf("Corpus() = %+v, want the zero value", got)
+		}
+	})
+}
+
+// TestDocExamplesLoad keeps docs/reference/instance-toml.md honest: every
+// toml-fenced block on the page must load. The page is the spec, and a spec
+// whose own examples fail the loader is the drift this test exists to
+// prevent — the loader-side analog of the doctor page's rendered-output test.
+func TestDocExamplesLoad(t *testing.T) {
+	doc, err := os.ReadFile(filepath.Join("..", "..", "docs", "reference", "instance-toml.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocks := strings.Split(string(doc), "```")
+	checked := 0
+	for i := 1; i < len(blocks); i += 2 { // odd indices are inside fences
+		block, ok := strings.CutPrefix(blocks[i], "toml\n")
+		if !ok {
+			continue
+		}
+		checked++
+		if _, err := Load(write(t, "instance.toml", block)); err != nil {
+			t.Errorf("the reference page shows a document the loader rejects: %v\n%s", err, block)
+		}
+	}
+	// A floor, not an exact count: additions are welcome, but a drop below
+	// what existed when this was written means a block was silently
+	// exempted from the guard.
+	if checked < 3 {
+		t.Fatalf("only %d toml example blocks checked; 3 existed when this guard was written — was one silently exempted?", checked)
 	}
 }
 
