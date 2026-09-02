@@ -79,6 +79,21 @@ Harness preconditions
                              .rollingstart/instance.toml:3:1: unknown key "tset"
 ```
 
+When the definition declares operations
+([`instance-toml.md`](instance-toml.md) § `[operations]`), the
+`instance definition` row counts them alongside the commands — declared and
+validated, never run: doctor has no business resetting anyone's database.
+The composition rule: the commands phrase keeps its three v0 forms —
+`no commands` / `1 command` / `N commands` — the operations phrase is
+`1 operation` or `M operations`, joined with a comma, and the trailing
+`declared` governs both. So `instance definition loaded (3 commands, 2
+operations declared)`, `… (1 command, 1 operation declared)`,
+`… (no commands, 2 operations declared)`. A definition with no operations
+keeps the shorter v0 wording unchanged. Operations never add rows to the
+instance-command-health section — that section reports command health, and
+a definition declaring operations but no commands still reads
+`nothing declared` there.
+
 Any `FAIL` in this section is blocking: nothing can proceed and no lesson can
 be served. Doctor still runs the second section when it can, because a learner
 with a dirty tree also wants to know whether `pnpm` is installed.
@@ -209,6 +224,32 @@ One combination deserves its own sentence: `GIT_DIR` alone, without
 stays put, and the working-tree probe will faithfully report the difference
 between the two as uncommitted changes. The note above the report is the
 explanation for that finding.
+
+## Corpus pointers that do not resolve
+
+A corpus pointer ([`instance-toml.md`](instance-toml.md) § `[corpus]`) whose
+target is absent from this checkout gets the same treatment as a git
+override: named, not fought. Every path-valued pointer is checked — each
+`exemplary` entry and `definition-of-ready` alike; `exemplar-prs` URLs are
+never checked at all, because doctor performs no network I/O. Existence
+follows symlinks, so a link to nowhere is a missing target. The notes print
+ahead of the report alongside the git-override note — git's first, then one
+line per missing pointer in declaration order —
+
+```
+note: corpus pointer apps/web/src/features/poll does not exist in this checkout
+```
+
+— and nothing else changes: no red row, no different exit code. The path is
+echoed exactly as the definition declares it — an exception to the
+relative-paths rule above, because the thing to fix is the line in
+`instance.toml`, not a file at that path. The file itself is fine; the
+working copy just doesn't match it, which usually means a directory moved or
+a document was renamed and the definition wants updating. A harness `FAIL`
+means nothing can proceed, and a stale exemplar pointer stops no lesson — so
+it is a note, not a failure. When the definition itself fails to load there
+are no corpus notes: the `instance definition` row and the skipped second
+section carry that story.
 
 ## What doctor never does
 
