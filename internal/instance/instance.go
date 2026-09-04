@@ -66,7 +66,7 @@ type Instance struct {
 
 // Commands returns the declared commands in canonical order: build,
 // typecheck, test, lint. Undeclared commands are absent; a definition
-// declaring none returns an empty slice, which is a valid state the caller
+// declaring none returns nil, which is a valid state the caller
 // is expected to surface rather than treat as healthy. The slice is the
 // caller's own copy — an Instance stays as validated no matter what a
 // caller does with what the accessors hand out.
@@ -95,9 +95,12 @@ func (i *Instance) Corpus() Corpus {
 // underlying decoder produced one.
 type ParseError struct {
 	Path   string
-	Line   int    // 1-based; 0 when the failure has no position
-	Column int    // 1-based; 0 when the failure has no position
-	Key    string // offending key path (dotted), when known
+	Line   int // 1-based; 0 when the failure has no position
+	Column int // 1-based; 0 when the failure has no position
+	// Key is the offending key path, dotted, when known. It is for display,
+	// never for splitting: a quoted TOML key such as "a.b" is one segment
+	// that carries its own dot.
+	Key    string
 	Msg    string
 	detail string
 }
