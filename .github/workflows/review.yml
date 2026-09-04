@@ -1,0 +1,167 @@
+# Automatic PR review, ported from UCEAP/uceap3's review.yml. Findings with
+# a location land as inline comments on the diff; the summary lands in the
+# conversation. Three deliberate differences from the original: Anthropic
+# API key auth instead of Foundry, the Opus model this repository already
+# pins for its local pre-push review, and a Go toolchain so the reviewer can
+# run the gate instead of reasoning about what it would say.
+name: Claude Code Review
+
+on:
+  pull_request:
+    # `edited` fires on base-branch retargets (a stack layer merging
+    # beneath this PR): the retarget run knows the new base, supersedes
+    # any in-flight run via the concurrency group below, and — because
+    # the patch-id gate hashes the diff — costs nothing when the
+    # reviewed content is unchanged (title/body edits likewise cache-hit
+    # and skip). Without it, a run whose payload base ref the merge just
+    # deleted dies on the action's internal fetch, with nothing queued
+    # to replace it.
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # A push whose effective diff is unchanged — a rebase onto moved main,
+  # a base-branch retarget after a stack layer merges — needs no fresh
+  # review: the reviewed content is byte-identical. `git patch-id
+  # --stable` hashes the PR's diff insensitively to line offsets and
+  # rebases, and an actions/cache key records each hash the review job
+  # completed on. Cache hit ⇒ skip the (expensive) review run. Fail-open
+  # by design: cache eviction only ever costs a redundant review, never
+  # a missed one. Semantic conflicts with newly merged main are CI's to
+  # catch — the diff the reviewer would read hasn't changed.
+  gate:
+    name: Diff gate
+    # A fork's pull_request run gets no secrets and no id-token, so the
+    # action could not authenticate; skip rather than fail red.
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    outputs:
+      hash: ${{ steps.hash.outputs.hash }}
+      hit: ${{ steps.probe.outputs.cache-hit }}
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Compute diff patch-id
+        id: hash
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          # A stacked-PR merge can delete this run's payload base ref
+          # mid-flight; the retarget's `edited` run (same head SHA)
+          # supersedes this one, so exit green rather than red.
+          if ! git ls-remote --exit-code origin "refs/heads/$BASE_REF" > /dev/null; then
+            echo "base ref $BASE_REF no longer exists (PR retargeted); the retarget run supersedes this one"
+            echo "hash=retargeted" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch origin "$BASE_REF" --quiet
+          HASH=$(git diff "origin/${BASE_REF}...HEAD" | git patch-id --stable | cut -d' ' -f1)
+          echo "hash=${HASH:-empty}" >> "$GITHUB_OUTPUT"
+
+      - name: Probe for an already-reviewed diff
+        id: probe
+        uses: actions/cache/restore@v4
+        with:
+          path: .reviewed-marker
+          key: reviewed-pr${{ github.event.pull_request.number }}-${{ steps.hash.outputs.hash }}
+          lookup-only: true
+
+  review:
+    name: Claude Review
+    needs: gate
+    if: needs.gate.outputs.hit != 'true' && needs.gate.outputs.hash != 'retargeted'
+    runs-on: ubuntu-latest
+
+    # Not the ceiling it reads as. The action exports its exchanged app
+    # token — write on contents, issues, and PRs from the installation —
+    # and the API key into the environment the reviewer's commands run
+    # in, and `go test` runs the branch's own code there. CI runs the
+    # same tests holding neither. That is why the gate confines this job
+    # to same-repo PRs: code that reaches this environment came from
+    # someone with push access already.
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # The same toolchain CI uses, so the reviewer can run the gate —
+      # build, vet, gofmt, test — to check a claim instead of guessing.
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: true
+
+      - name: Run Claude Code Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: |
+            --model claude-opus-5
+            --allowedTools "Read,Glob,Grep,Bash(go build:*),Bash(go vet:*),Bash(go test:*),Bash(gofmt:*),Bash(go mod tidy:*),mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue list:*),Bash(gh issue view:*)"
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request. Read REVIEW.md for the full review
+            guidelines, then evaluate the changes against those guidelines,
+            against the milestone plan in docs/plans/ that the PR's issue
+            belongs to, and against any ADR in docs/decisions/ the change
+            touches.
+
+            A Go toolchain is installed. When a finding rests on what the
+            code actually does — a test that should fail, a vet complaint,
+            a formatting claim — run `go build ./...`, `go vet ./...`,
+            `gofmt -l .`, `go test ./...`, or `go mod tidy -diff` and say
+            what you ran, rather than reasoning about what they would
+            print. Run them bare: the allowlist matches command prefixes,
+            so a pipe or redirect is denied and nobody is here to approve
+            it. Never `go mod tidy` without `-diff` — it rewrites the tree
+            you are reviewing.
+
+            **Dedupe before posting.** Repeated reviews on the same PR
+            (each push triggers a re-run) and recurring nits across PRs
+            waste reviewer attention. Before posting any non-blocking
+            concern (perf nits, "consider doing X later", forward-looking
+            tracking observations):
+
+            1. Read the PR's existing review threads via `gh pr view
+               --comments`. If you've already raised the same concern on
+               this PR — or the author replied with a "tracked as #NN"
+               or "filed as #NN" — do not re-raise it.
+            2. Search open repo issues with `gh issue list --search
+               "<keywords>"` for the concern. If it's already filed,
+               skip or briefly cite the existing issue ("already tracked
+               in #NN") instead of re-explaining it.
+
+            Substantive blockers (correctness bugs, security issues,
+            spec violations) should still be raised even if previously
+            mentioned — the author may not have addressed them.
+
+            Use `mcp__github_inline_comment__create_inline_comment` (with `confirmed: true`)
+            for inline comments on specific code locations.
+            Use `gh pr comment` for top-level summary feedback.
+            Only post GitHub comments — don't submit review text as messages.
+
+      # Record the reviewed diff so the gate skips content-identical
+      # pushes (see the gate job's comment).
+      - name: Mark diff as reviewed
+        run: echo reviewed > .reviewed-marker
+
+      - name: Save reviewed-diff marker
+        uses: actions/cache/save@v4
+        with:
+          path: .reviewed-marker
+          key: reviewed-pr${{ github.event.pull_request.number }}-${{ needs.gate.outputs.hash }}

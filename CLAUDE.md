@@ -98,10 +98,10 @@ skipped when it matters.
 comments (`gh api repos/rollingstart-dev/rollingstart/pulls/<N>/comments`),
 review summary bodies (`gh pr view <N> --json reviews`), and the PR-level
 conversation (`gh api repos/rollingstart-dev/rollingstart/issues/<N>/comments`).
-The review bot posts whole-PR findings as conversation comments, so an empty
-inline list plus green checks is not review-clean — a substantive finding may
-be sitting in the conversation tab. Check all three before declaring a review
-triaged or replying "no comments".
+The review bot anchors a finding inline when it has a location and puts its
+summary — and any whole-PR finding with no single location — in the
+conversation, so an empty inline list plus green checks is not review-clean.
+Check all three before declaring a review triaged or replying "no comments".
 
 **Answer review findings where they were raised.** Reply to each inline
 comment in its own thread
