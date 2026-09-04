@@ -132,6 +132,17 @@ sub-agent on the Opus model over the outgoing diff, against
 findings are fixed before the push. The rule and its calibration are in
 [`CLAUDE.md`](../CLAUDE.md) § Rules.
 
+Every push to a non-draft PR from a branch in this repository also gets an
+automatic review from the Claude bot
+([`review.yml`](../.github/workflows/review.yml), ported from uceap3 and
+given the Go toolchain so it can run the gate rather than guess at it): a
+finding with a location lands as an inline comment on the diff, the summary
+as a conversation comment. A push whose diff is byte-identical to one already
+reviewed — a rebase onto moved `main`, a stack retarget — skips the run. A
+PR that edits `review.yml` itself is the one case the action refuses to run
+on (the check goes green having done nothing), so a change to the review
+workflow is exercised only after it merges.
+
 ### CI
 
 `go build ./...`, `go vet ./...`, `gofmt -l .` (any file it lists fails the
