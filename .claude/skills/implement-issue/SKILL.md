@@ -113,8 +113,30 @@ Base chaining keeps `gh pr merge` available and is how this repo stacks.
    is the spec. Commit: `docs: describe {behaviour}`
 2. **Failing test** — encode the expected behaviour. It must fail now. Commit:
    `test: add failing test for {behaviour}`
-3. **Implement** — build until it passes, following existing patterns. Logical
-   commits with real bodies.
+3. **Implement** — build until it passes, following existing patterns. Before
+   writing Go for the task, list the modern-Go guidelines for this module once
+   and treat the output as the idiom reference. It prints only what applies to
+   the Go version go.mod declares, newest first, and the newest entries may
+   postdate the model's training data:
+
+   ```
+   go run github.com/JetBrains/go-modern-guidelines@v0.1.1 list --file-path go.mod
+   ```
+
+   Run it from the repository root and read the whole output — never through
+   `head`, `tail`, or `grep`, which is how a fifty-line list loses the entry
+   that mattered. It is one list per Go version, not per file, and the
+   `--file-path` is what makes it go.mod's version: without it the tool reads
+   the installed toolchain's, which is the drift it exists to prevent. For
+   detail and an example:
+
+   ```
+   go run github.com/JetBrains/go-modern-guidelines@v0.1.1 explain <id> [<id>...]
+   ```
+
+   Follow a returned guideline even where nearby code uses the older pattern;
+   skip it only when it would not compile, would change behaviour, or clearly
+   does not match the code being edited. Logical commits with real bodies.
 4. **Verify** — `gofmt -l .`, `go vet ./...`, `go test ./...`, `go build ./...`,
    and the modernize analyzer (the pinned `go run` line in
    [`ci.yml`](../../../.github/workflows/ci.yml))

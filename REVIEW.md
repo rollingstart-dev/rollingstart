@@ -41,6 +41,12 @@ recover once crossed:
 - Exported identifiers have doc comments. Unexported ones have comments where
   the *why* isn't obvious from the name.
 - Table-driven tests where there is more than one case.
+- Modern Go for the version go.mod declares. The `modernize` gate in CI
+  catches the mechanical half; the rest is judgment — a hand loop where
+  `slices.Index` or `maps.Clone` has the function, `err == target` for
+  `errors.Is`, `time.Now().Sub(t)` for `time.Since(t)`, a nil-check chain
+  for `cmp.Or`. The reference is the guidelines list for this module:
+  `go run github.com/JetBrains/go-modern-guidelines@v0.1.1 list --file-path go.mod`.
 
 ## Tests
 
