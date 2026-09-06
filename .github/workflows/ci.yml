@@ -44,3 +44,17 @@ jobs:
         with:
           go-version: stable
       - run: go mod tidy -diff
+
+  # The gopls modernize analyzer, not Go 1.26's built-in `go fix -diff`:
+  # the built-in fixers lack errorsastype, which was three of the four
+  # findings the first audit turned up. A finding fails the run by exit
+  # status. Pinned so a new gopls release cannot turn main red on its
+  # own; bump it deliberately, alongside the Go version.
+  modernize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+      - run: go run golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@v0.23.0 -test ./...

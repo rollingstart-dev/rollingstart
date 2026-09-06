@@ -138,8 +138,7 @@ func runGit(ctx context.Context, dir string, args ...string) (string, error) {
 	if err == nil {
 		return strings.TrimSpace(stdout.String()), nil
 	}
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 		return "", &gitError{code: exit.ExitCode(), stderr: strings.TrimSpace(stderr.String())}
 	}
 	return "", err
