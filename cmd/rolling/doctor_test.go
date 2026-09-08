@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -182,7 +183,7 @@ func TestCorpusNotes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := corpusNotes(root, tt.corpus)
-			if strings.Join(got, "\n") != strings.Join(tt.want, "\n") {
+			if !slices.Equal(got, tt.want) {
 				t.Errorf("corpusNotes() =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(tt.want, "\n"))
 			}
 		})
