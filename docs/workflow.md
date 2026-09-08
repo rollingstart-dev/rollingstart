@@ -177,7 +177,13 @@ the binary's contract, tested the way a learner meets it.
 
 ### Merging
 
-Squash merge to `main`. Delete the branch after.
+Merge commits to `main`, never squash. A squash rewrites the history every
+upper layer of a stack descends from, so each layer above it conflicts and
+needs a rebase before it can merge — #47 did, after #46 was squashed. Stacks
+are common here, so the repository allows only merge commits; the branch's
+own commits, with the bodies this repository asks for, are the history.
+GitHub deletes the head branch on merge, which is what retargets the next
+layer of a stack to `main`.
 
 ## Commit messages
 

@@ -103,7 +103,9 @@ past a few hundred reviewable lines — plan a **base-chained stack** instead:
   own merge flow. Deleting a merged base by hand closes the PRs stacked on it
   instead (#47 was closed that way and reopened), so leave the deletion to
   the setting
-- Hand the whole stack over when every slice has settled; merge bottom-up
+- Hand the whole stack over when every slice has settled; merge bottom-up,
+  with merge commits — the repository allows nothing else, because a squash
+  rewrites the history the layer above descends from and strands it
 
 **Never use GitHub's native stacked PRs.** Do not run `gh stack init/add/submit`.
 Native stacks cannot be admin-merged and render poorly for reviewers on mobile.
