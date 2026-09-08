@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/rollingstart-dev/rollingstart/internal/instance"
 )
 
 // scrubGitEnvT removes inherited GIT_* state for one test, the way e2e's
@@ -130,5 +132,75 @@ func TestNoteExampleMatchesTheReferencePage(t *testing.T) {
 	}
 	if note := gitOverrideNote(); !strings.Contains(string(doc), note) {
 		t.Errorf("the reference page does not show the note the command prints:\n%s", note)
+	}
+}
+
+// TestCorpusNotes: every path-valued pointer is checked against the root,
+// exemplary entries in list order and definition-of-ready last; URLs are
+// never touched; existence follows symlinks. The path is echoed as declared
+// — the line to fix is in instance.toml, not a file at that path.
+func TestCorpusNotes(t *testing.T) {
+	root := t.TempDir()
+	mk := func(rel string) {
+		t.Helper()
+		full := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mk("apps/web/present.go")
+	mk("docs/ready.md")
+	if err := os.Symlink(filepath.Join(root, "nowhere"), filepath.Join(root, "dangling")); err != nil {
+		t.Fatal(err)
+	}
+	tests := []struct {
+		name   string
+		corpus instance.Corpus
+		want   []string
+	}{
+		{"nothing declared", instance.Corpus{}, nil},
+		{"all present", instance.Corpus{Exemplary: []string{"apps/web", "apps/web/present.go"}, DefinitionOfReady: "docs/ready.md"}, nil},
+		{"urls are never checked", instance.Corpus{ExemplarPRs: []string{"https://example.invalid/pull/1"}}, nil},
+		{"missing exemplary, in list order", instance.Corpus{Exemplary: []string{"apps/web/src/features/poll", "apps/web", "packages/gone"}},
+			[]string{
+				"note: corpus pointer apps/web/src/features/poll does not exist in this checkout",
+				"note: corpus pointer packages/gone does not exist in this checkout",
+			}},
+		{"definition-of-ready last", instance.Corpus{Exemplary: []string{"missing"}, DefinitionOfReady: ".rollingstart/ready.md"},
+			[]string{
+				"note: corpus pointer missing does not exist in this checkout",
+				"note: corpus pointer .rollingstart/ready.md does not exist in this checkout",
+			}},
+		{"a dangling symlink is a missing target", instance.Corpus{Exemplary: []string{"dangling"}},
+			[]string{"note: corpus pointer dangling does not exist in this checkout"}},
+		{"a path through a file is absent too", instance.Corpus{Exemplary: []string{"docs/ready.md/inner"}},
+			[]string{"note: corpus pointer docs/ready.md/inner does not exist in this checkout"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := corpusNotes(root, tt.corpus)
+			if strings.Join(got, "\n") != strings.Join(tt.want, "\n") {
+				t.Errorf("corpusNotes() =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(tt.want, "\n"))
+			}
+		})
+	}
+}
+
+// TestCorpusNoteExampleMatchesTheReferencePage: as for the git note, the
+// renderer's drift guard skips note: blocks, so the check lives here.
+func TestCorpusNoteExampleMatchesTheReferencePage(t *testing.T) {
+	doc, err := os.ReadFile(filepath.Join("..", "..", "docs", "reference", "rolling-doctor.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes := corpusNotes(t.TempDir(), instance.Corpus{Exemplary: []string{"apps/web/src/features/poll"}})
+	if len(notes) != 1 {
+		t.Fatalf("corpusNotes() = %q, want one note", notes)
+	}
+	if !strings.Contains(string(doc), notes[0]) {
+		t.Errorf("the reference page does not show the note the command prints:\n%s", notes[0])
 	}
 }
