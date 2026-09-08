@@ -22,12 +22,33 @@ func InstanceConfig(ctx context.Context, dir string) Result {
 	if err != nil {
 		return Result{Name: name, Status: Red, Message: err.Error()}
 	}
-	switch n := len(inst.Commands()); n {
+	phrase := declaredPhrase(len(inst.Commands()), len(inst.Operations()))
+	return Result{Name: name, Status: Green, Message: fmt.Sprintf("instance definition loaded (%s declared)", phrase)}
+}
+
+// declaredPhrase composes the row's parenthetical by the reference page's
+// rule: the commands phrase keeps its three v0 forms, an operations phrase
+// joins it with a comma only when there is one to count, and the caller's
+// trailing "declared" governs both. Operations are counted and nothing
+// more — doctor has no business resetting anyone's database — so the
+// count is the whole of what the row says about them, and a definition
+// with none reads exactly as it did in v0.
+func declaredPhrase(commands, operations int) string {
+	var phrase string
+	switch commands {
 	case 0:
-		return Result{Name: name, Status: Green, Message: "instance definition loaded (no commands declared)"}
+		phrase = "no commands"
 	case 1:
-		return Result{Name: name, Status: Green, Message: "instance definition loaded (1 command declared)"}
+		phrase = "1 command"
 	default:
-		return Result{Name: name, Status: Green, Message: fmt.Sprintf("instance definition loaded (%d commands declared)", n)}
+		phrase = fmt.Sprintf("%d commands", commands)
 	}
+	switch operations {
+	case 0:
+	case 1:
+		phrase += ", 1 operation"
+	default:
+		phrase += fmt.Sprintf(", %d operations", operations)
+	}
+	return phrase
 }

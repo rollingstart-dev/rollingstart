@@ -450,3 +450,135 @@ func TestDoctorBenignGitVarsNoNote(t *testing.T) {
 		t.Errorf("a note for benign git variables:\n%s", res.stdout)
 	}
 }
+
+// TestDoctorOperationsCounted: a v1 definition's operations are counted in
+// the instance-definition row and never run — the health section lists
+// commands only, and a definition with operations but no commands still
+// reads "nothing declared" there.
+func TestDoctorOperationsCounted(t *testing.T) {
+	repo := newRepo(t)
+	writeDefinition(t, repo, "[commands]\nbuild = \"true\"\n[operations]\nreset-db = { command = \"exit 1\", destructive = true }\n")
+	commitAll(t, repo)
+	res := rolling(t, runOptions{dir: repo}, "doctor")
+	if res.code != 0 {
+		t.Fatalf("exit %d, want 0\n%s", res.code, res.stdout)
+	}
+	mustContain(t, res.stdout,
+		"  ok    instance definition  instance definition loaded (1 command, 1 operation declared)",
+		"  healthy        build      true",
+	)
+	if strings.Contains(res.stdout, "reset-db") || strings.Contains(res.stdout, "exit 1") {
+		t.Errorf("an operation appears in the health section, or ran:\n%s", res.stdout)
+	}
+
+	repo = newRepo(t)
+	writeDefinition(t, repo, "[operations]\nreset-db = { command = \"true\" }\nseed-db = { command = \"true\" }\n")
+	commitAll(t, repo)
+	res = rolling(t, runOptions{dir: repo}, "doctor")
+	if res.code != 0 {
+		t.Fatalf("exit %d, want 0\n%s", res.code, res.stdout)
+	}
+	mustContain(t, res.stdout,
+		"  ok    instance definition  instance definition loaded (no commands, 2 operations declared)",
+		"  nothing declared: .rollingstart/instance.toml declares no commands",
+	)
+}
+
+const corpusDef = "[commands]\nbuild = \"true\"\n" +
+	"[corpus]\n" +
+	"exemplary = [\"src/present\", \"src/missing\"]\n" +
+	"exemplar-prs = [\"https://example.invalid/pull/1\"]\n" +
+	"definition-of-ready = \"docs/ready.md\"\n"
+
+// TestDoctorCorpusNotes: a pointer whose target is absent is a note ahead
+// of the report — one line each, exemplary first, definition-of-ready last,
+// the path as declared — and nothing else changes: no FAIL, exit 0. The
+// URL is never fetched: example.invalid resolves nowhere, and the run
+// finishes well inside the test's timeout regardless.
+func TestDoctorCorpusNotes(t *testing.T) {
+	repo := newRepo(t)
+	writeDefinition(t, repo, corpusDef)
+	if err := os.MkdirAll(filepath.Join(repo, "src", "present"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "src", "present", "a.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	commitAll(t, repo)
+	res := rolling(t, runOptions{dir: repo}, "doctor")
+	if res.code != 0 {
+		t.Fatalf("exit %d, want 0\n%s", res.code, res.stdout)
+	}
+	want := "note: corpus pointer src/missing does not exist in this checkout\n" +
+		"note: corpus pointer docs/ready.md does not exist in this checkout\n" +
+		"\nHarness preconditions\n"
+	if !strings.HasPrefix(res.stdout, want) {
+		t.Errorf("report does not open with the corpus notes:\nwant prefix:\n%s\ngot:\n%s", want, res.stdout)
+	}
+	if strings.Contains(res.stdout, "src/present") || strings.Contains(res.stdout, "example.invalid") {
+		t.Errorf("a note for a pointer that resolves, or for a URL:\n%s", res.stdout)
+	}
+	if strings.Contains(res.stdout, "FAIL") {
+		t.Errorf("a missing corpus pointer turned a row red:\n%s", res.stdout)
+	}
+}
+
+// TestDoctorCorpusValidNoNote: every pointer resolves — no note at all.
+func TestDoctorCorpusValidNoNote(t *testing.T) {
+	repo := newRepo(t)
+	writeDefinition(t, repo, corpusDef)
+	for _, rel := range []string{"src/present/a.txt", "src/missing/b.txt", "docs/ready.md"} {
+		full := filepath.Join(repo, rel)
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	commitAll(t, repo)
+	res := rolling(t, runOptions{dir: repo}, "doctor")
+	if res.code != 0 {
+		t.Fatalf("exit %d, want 0\n%s", res.code, res.stdout)
+	}
+	if strings.Contains(res.stdout, "note:") {
+		t.Errorf("a note with every pointer resolving:\n%s", res.stdout)
+	}
+}
+
+// TestDoctorCorpusNotesNeedALoadedDefinition: when the definition itself
+// fails to load, the instance-definition row and the skipped section carry
+// that story; a definition that failed validation gets no corpus notes.
+func TestDoctorCorpusNotesNeedALoadedDefinition(t *testing.T) {
+	repo := newRepo(t)
+	writeDefinition(t, repo, "[corpus]\nexemplary = [\"src/missing\"]\n[commands]\nbiuld = \"true\"\n")
+	commitAll(t, repo)
+	res := rolling(t, runOptions{dir: repo}, "doctor")
+	if res.code != 1 {
+		t.Fatalf("exit %d, want 1\n%s", res.code, res.stdout)
+	}
+	mustContain(t, res.stdout, `FAIL  instance definition  .rollingstart/instance.toml:4:1: unknown key "commands.biuld"`)
+	if strings.Contains(res.stdout, "note:") {
+		t.Errorf("a corpus note for a definition that did not load:\n%s", res.stdout)
+	}
+}
+
+// TestDoctorGitAndCorpusNotesOrder: both kinds of note together print in
+// the page's order — git's first, then the corpus lines, then one blank
+// line before the report.
+func TestDoctorGitAndCorpusNotesOrder(t *testing.T) {
+	repo := newRepo(t)
+	writeDefinition(t, repo, "[commands]\nbuild = \"true\"\n[corpus]\nexemplary = [\"src/missing\"]\n")
+	commitAll(t, repo)
+	gitDir := filepath.Join(repo, ".git")
+	res := rolling(t, runOptions{dir: repo, env: []string{"GIT_DIR=" + gitDir}}, "doctor")
+	if res.code != 0 {
+		t.Fatalf("exit %d, want 0\n%s", res.code, res.stdout)
+	}
+	want := "note: GIT_DIR=" + gitDir + " is set — git operations, and this report, follow it\n" +
+		"note: corpus pointer src/missing does not exist in this checkout\n" +
+		"\nHarness preconditions\n"
+	if !strings.HasPrefix(res.stdout, want) {
+		t.Errorf("notes out of order or mis-separated:\nwant prefix:\n%s\ngot:\n%s", want, res.stdout)
+	}
+}

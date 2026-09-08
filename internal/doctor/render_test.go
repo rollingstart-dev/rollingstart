@@ -300,6 +300,29 @@ Instance command health
   ok    working tree    working tree is clean
 `,
 	},
+	{
+		// The v1 row: operations counted beside the commands. The instance
+		// section is unchanged by them — it reports command health.
+		name: "operations counted",
+		report: Report{
+			Harness: []probe.Result{
+				allGreen[0], allGreen[1], allGreen[2],
+				{Name: "instance definition", Status: probe.Green, Message: "instance definition loaded (3 commands, 2 operations declared)"},
+				allGreen[4],
+			},
+			Instance: Ran([]CommandRow{row("build", "go build ./...", runner.Result{Outcome: runner.Succeeded, Duration: time.Second})}),
+		},
+		want: `Harness preconditions
+  ok    git repository       inside a git work tree
+  ok    working tree         working tree is clean
+  ok    line endings         core.autocrlf is unset
+  ok    instance definition  instance definition loaded (3 commands, 2 operations declared)
+  ok    file watcher         file events are delivered
+
+Instance command health
+  healthy        build      go build ./...  1.0s
+`,
+	},
 }
 
 func TestRenderGolden(t *testing.T) {
@@ -362,8 +385,8 @@ func TestDocExamplesAreRendered(t *testing.T) {
 	// A floor, not an exact count: additions are welcome, but a drop
 	// below what existed when this was written means a block was silently
 	// exempted from the guard.
-	if checked < 8 {
-		t.Fatalf("only %d report-shaped example blocks checked; 8 existed when this guard was written — was one silently exempted?", checked)
+	if checked < 9 {
+		t.Fatalf("only %d report-shaped example blocks checked; 9 exist as of #37 — was one silently exempted?", checked)
 	}
 }
 

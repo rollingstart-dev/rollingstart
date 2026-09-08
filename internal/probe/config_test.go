@@ -58,6 +58,34 @@ func TestInstanceConfig(t *testing.T) {
 			wantStatus: Red,
 			wantIn:     []string{"commands.test", "empty"},
 		},
+		// Operations are counted beside the commands, never run, and the
+		// phrasing follows the reference page's composition rule: each
+		// phrase keeps its singular and plural, one "declared" governs
+		// both, and a definition with no operations keeps the v0 wording.
+		{
+			name:       "one command, one operation",
+			content:    "[commands]\nbuild = \"x\"\n[operations]\nreset-db = { command = \"y\", destructive = true }\n",
+			wantStatus: Green,
+			wantIn:     []string{"loaded (1 command, 1 operation declared)"},
+		},
+		{
+			name:       "commands and operations",
+			content:    "[commands]\nbuild = \"x\"\ntest = \"x\"\nlint = \"x\"\n[operations]\nreset-db = { command = \"y\" }\nseed-db = { command = \"z\" }\n",
+			wantStatus: Green,
+			wantIn:     []string{"loaded (3 commands, 2 operations declared)"},
+		},
+		{
+			name:       "operations without commands",
+			content:    "[operations]\nreset-db = { command = \"y\" }\nseed-db = { command = \"z\" }\n",
+			wantStatus: Green,
+			wantIn:     []string{"loaded (no commands, 2 operations declared)"},
+		},
+		{
+			name:       "commands without operations keep the v0 wording",
+			content:    "[commands]\nbuild = \"x\"\ntest = \"x\"\n",
+			wantStatus: Green,
+			wantIn:     []string{"loaded (2 commands declared)"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
