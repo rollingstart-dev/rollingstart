@@ -2,11 +2,15 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -81,8 +85,28 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	}
 	dir := resolveRoot(ctx, start)
 
+	// One load serves everything outside the probes: the corpus notes
+	// ahead of the report and the instance section after it. The
+	// instance-definition probe loads again on its own — its contract is
+	// a directory — and the read is one local file.
+	inst, loadErr := instance.Load(filepath.Join(dir, instance.Path))
+
+	// Notes precede the report: git's override note first, then one line
+	// per corpus pointer absent from this checkout, then a blank line. A
+	// definition that did not load has no corpus to check — the
+	// instance-definition row and the skipped section carry that story.
+	var notes []string
 	if note := gitOverrideNote(); note != "" {
-		fmt.Fprintf(out, "%s\n\n", note)
+		notes = append(notes, note)
+	}
+	if loadErr == nil {
+		notes = append(notes, corpusNotes(dir, inst.Corpus())...)
+	}
+	if len(notes) > 0 {
+		for _, note := range notes {
+			fmt.Fprintln(out, note)
+		}
+		fmt.Fprintln(out)
 	}
 
 	var report doctor.Report
@@ -101,7 +125,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 
 	if !interrupted {
 		var err error
-		report.Instance, interrupted, err = instanceSection(ctx, dir, doctorTimeout)
+		report.Instance, interrupted, err = instanceSection(ctx, dir, inst, loadErr, doctorTimeout)
 		if err != nil {
 			return err
 		}
@@ -120,16 +144,17 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// instanceSection loads the definition and runs the declared commands
-// sequentially, in canonical order, from the root. It runs whenever the
-// definition loads, even when another precondition failed — a learner with
-// a dirty tree also wants to know whether their toolchain is installed.
-// The double load (the instance-definition probe loaded it too) is one
-// local file read.
-func instanceSection(ctx context.Context, dir string, timeout time.Duration) (doctor.InstanceSection, bool, error) {
-	inst, err := instance.Load(filepath.Join(dir, instance.Path))
-	if err != nil {
-		return doctor.Skipped(err.Error()), false, nil
+// instanceSection runs the declared commands sequentially, in canonical
+// order, from the root. It runs whenever the definition loaded, even when
+// another precondition failed — a learner with a dirty tree also wants to
+// know whether their toolchain is installed. inst and loadErr are the one
+// load runDoctor made; a load failure is the section's skipped reason.
+// Operations never reach here: the section reports command health, and a
+// definition declaring operations but no commands still reads "nothing
+// declared".
+func instanceSection(ctx context.Context, dir string, inst *instance.Instance, loadErr error, timeout time.Duration) (doctor.InstanceSection, bool, error) {
+	if loadErr != nil {
+		return doctor.Skipped(loadErr.Error()), false, nil
 	}
 	cmds := inst.Commands()
 	if len(cmds) == 0 {
@@ -184,6 +209,35 @@ func gitOverrideNote() string {
 		list := strings.Join(set[:len(set)-1], ", ") + ", and " + set[len(set)-1]
 		return fmt.Sprintf("note: %s are set — git operations, and this report, follow them", list)
 	}
+}
+
+// corpusNotes is the git note's sibling (#37): a corpus pointer whose
+// target is absent from this checkout is named, not fought. Every
+// path-valued pointer is checked — exemplary entries in list order, then
+// definition-of-ready. exemplar-prs are URLs, and doctor performs no
+// network I/O, so they are never touched. Existence follows symlinks —
+// Stat, not Lstat — so a link to nowhere is a missing target. The path is
+// echoed as declared, an exception to the relative-paths rule: the thing to
+// fix is the line in instance.toml, not a file at that path. Informational
+// only — a stale exemplar stops no lesson — so no red row, no changed exit
+// code. Absence earns the note: no such entry, or a path component that
+// is a file where a directory was expected (ENOTDIR, which fs.ErrNotExist
+// does not cover — a document that became a file under a pointer that
+// still expects a directory). A target that exists but cannot be read is
+// a different problem, and not this note's claim.
+func corpusNotes(dir string, c instance.Corpus) []string {
+	paths := slices.Clone(c.Exemplary)
+	if c.DefinitionOfReady != "" {
+		paths = append(paths, c.DefinitionOfReady)
+	}
+	var notes []string
+	for _, p := range paths {
+		_, err := os.Stat(filepath.Join(dir, filepath.FromSlash(p)))
+		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+			notes = append(notes, fmt.Sprintf("note: corpus pointer %s does not exist in this checkout", p))
+		}
+	}
+	return notes
 }
 
 // resolveRoot finds the repository root from start — the directory the
