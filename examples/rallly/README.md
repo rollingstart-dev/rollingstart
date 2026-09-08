@@ -24,8 +24,28 @@ working-tree probe reports, and it is right to.
 |---|---|---|
 | `build` | `pnpm build` | Rallly's own build of the web app |
 | `typecheck` | `pnpm type-check` | `turbo type-check` across the workspace |
-| `test` | `pnpm test:unit` | unit tests need no infrastructure; the integration suite needs the stack, which makes it an operation (M2), not a health check |
+| `test` | `pnpm test:unit` | unit tests need no infrastructure; the integration suite needs the stack, so it is not a health check of the working copy — a task's verifier is where it belongs (2.3) |
 | `lint` | `pnpm check` | biome, as Rallly runs it |
+
+## What the operations are
+
+Rallly's database rituals, from its CONTRIBUTING — declared and counted by
+doctor, run by nothing until the session loop (M3), which prompts before the
+destructive one.
+
+| key | command | why this one |
+|---|---|---|
+| `reset-db` | `pnpm db:reset --force` | `prisma migrate reset`: confirms, then drops the database, replays every migration, and runs the seed. Destructive, so marked. `--force` disarms prisma's own confirmation — consent is the harness's prompt, once, up front, and an operation that hangs on a hidden prompt is a trap |
+| `seed-db` | `pnpm db:seed` | test users and random data on their own — the ritual when the schema is fine and only the data is stale; the reset seeds too |
+| `apply-migrations` | `pnpm db:deploy` | `prisma migrate deploy`: pending migrations applied, nothing prompted, nothing dropped — the ritual after a pull that brought schema changes. Not `db:migrate`: `prisma migrate dev` wants a migration name when the schema moved and refuses a non-interactive run |
+| `regenerate-client` | `pnpm db:generate` | the Prisma client is a generated artifact; a stale one fails the build and the type-check in ways that read as bugs in the code |
+
+`pnpm docker:up` is deliberately absent: bringing the stack up is not a
+ritual inside a running environment, and Rolling Start never orchestrates the
+environment (`docs/reference/instance-toml.md` § `[operations]`). Corpus
+pointers — which of Rallly's code is exemplary, which pull requests show how
+work is done here — are authoring judgment, and arrive with the hand-authored
+trajectory (2.5), not with this mapping.
 
 ## What green requires
 
