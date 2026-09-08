@@ -147,10 +147,24 @@ workflow is exercised only after it merges.
 
 `go build ./...`, `go vet ./...`, `gofmt -l .` (any file it lists fails the
 run, and the listing is the failure message), and `go test ./...` on Linux and
-macOS, plus `go mod tidy -diff`. All must pass before merge. The repository's
-own [`.rollingstart/instance.toml`](../.rollingstart/instance.toml) declares
-the same build, test, and lint checks, so a run of the instance's commands
-covers everything CI does except `go mod tidy -diff` and the macOS leg.
+macOS, plus `go mod tidy -diff` and the gopls `modernize` analyzer. The
+analyzer's `go run` line, pinned to a gopls release, lives in
+[`ci.yml`](../.github/workflows/ci.yml); copy it from there. The review
+bot's allowlist carries the same pin, and the two move together. The same
+line with `-fix` added before `./...` applies the rewrites, which is how a
+red run is fixed. The first run fetches the gopls module, so a cold cache
+needs the network; after that it is local and takes about a second. All
+must pass before merge. The analyzer is the mechanical half of
+[modern Go](https://github.com/JetBrains/go-modern-guidelines): a hand loop
+where `slices.Contains` exists, `errors.As` where `errors.AsType` exists, a
+three-clause `for` over an integer. Agents write those from habit, and the
+first run over this repository found four. It is the gopls command rather
+than Go 1.26's built-in `go fix -diff` because the built-in set lacks
+`errorsastype`; a finding fails the run by exit status. The repository's own
+[`.rollingstart/instance.toml`](../.rollingstart/instance.toml) declares the
+same build, test, and lint checks, so a run of the instance's commands covers
+everything CI does except `go mod tidy -diff`, the analyzer, and the macOS
+leg.
 
 `go test ./...` includes the [`e2e`](../e2e/) package, which builds the
 `rolling` binary once per run and executes it against fixture repositories —

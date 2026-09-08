@@ -350,8 +350,7 @@ func corpusPathReason(p string) string {
 // as a StrictMissingError holding one DecodeError per key; each becomes its
 // own ParseError so nothing is collapsed, joined so callers report them all.
 func parseError(path string, err error) error {
-	var strict *toml.StrictMissingError
-	if errors.As(err, &strict) {
+	if strict, ok := errors.AsType[*toml.StrictMissingError](err); ok {
 		errs := make([]error, 0, len(strict.Errors))
 		for i := range strict.Errors {
 			de := &strict.Errors[i]
@@ -369,8 +368,7 @@ func parseError(path string, err error) error {
 		return errors.Join(errs...)
 	}
 
-	var de *toml.DecodeError
-	if errors.As(err, &de) {
+	if de, ok := errors.AsType[*toml.DecodeError](err); ok {
 		row, col := de.Position()
 		return &ParseError{
 			Path:   path,

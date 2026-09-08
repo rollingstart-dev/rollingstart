@@ -121,9 +121,11 @@ question means stop and ask, not guess and continue.
 
 - Go, standard layout, `cmd/` + `internal/`. Cobra with Fang.
 - Test file beside each source file. A separate `e2e` package for end-to-end.
-- `gofmt`, `go vet`, `go test ./...` all clean before any push — each
-  checked by its own exit status, never through a pipe that masks it. A
-  `go test | grep` let a red branch reach the remote on #18.
+- `gofmt`, `go vet`, `go test ./...`, and the modernize analyzer (the
+  pinned `go run` line in [`ci.yml`](.github/workflows/ci.yml)) all clean
+  before any push — each checked by its own exit status, never through a
+  pipe that masks it. A `go test | grep` let a red branch reach the remote
+  on #18.
 - Errors that a command already rendered use `errSilentExit` so Fang doesn't
   stack a styled block on top of the command's own output.
 - Docs carry a light motorsport theme in prose. Never in identifiers —

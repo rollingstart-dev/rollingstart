@@ -58,7 +58,7 @@ func tail(s string, n int) string {
 
 func indent(s string) string {
 	var b strings.Builder
-	for _, l := range strings.Split(strings.TrimSuffix(s, "\n"), "\n") {
+	for l := range strings.SplitSeq(strings.TrimSuffix(s, "\n"), "\n") {
 		b.WriteString("    ")
 		b.WriteString(l)
 		b.WriteString("\n")
@@ -318,7 +318,7 @@ func TestRenderGolden(t *testing.T) {
 
 func firstDiff(got, want string) string {
 	g, w := strings.Split(got, "\n"), strings.Split(want, "\n")
-	for i := 0; i < len(g) && i < len(w); i++ {
+	for i := range min(len(g), len(w)) {
 		if g[i] != w[i] {
 			return "got:  " + g[i] + "\nwant: " + w[i]
 		}

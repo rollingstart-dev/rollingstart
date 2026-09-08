@@ -93,7 +93,7 @@ keeping every v0 file valid.
 - [ ] Table-driven loader tests: each new section, strictness on unknown keys,
       v0 compatibility, empty/duplicate names
 - [ ] An e2e doctor fixture with a dangling corpus pointer reports it by name
-- [ ] `gofmt`, `go vet`, `go test ./...` clean
+- [ ] `gofmt`, `go vet`, `go test ./...`, and the modernize analyzer clean
 
 ---
 
@@ -136,7 +136,7 @@ and demonstration bars, all mechanically validated.
       optional nodes
 - [ ] e2e doctor fixtures: valid graph green, each broken-graph class red with
       the error displayed
-- [ ] `gofmt`, `go vet`, `go test ./...` clean
+- [ ] `gofmt`, `go vet`, `go test ./...`, and the modernize analyzer clean
 
 ---
 
@@ -177,7 +177,7 @@ key), 2.2 (tasks key to nodes).
 - [ ] Table-driven tests: valid tasks of several ladder types, unknown node
       key, unknown command key, off-ladder type, malformed verifier
 - [ ] e2e doctor fixtures for valid and broken pools
-- [ ] `gofmt`, `go vet`, `go test ./...` clean
+- [ ] `gofmt`, `go vet`, `go test ./...`, and the modernize analyzer clean
 
 ---
 
@@ -217,7 +217,7 @@ normative rules for who mutates what.
 - [ ] Table-driven tests: fresh, populated, corrupt, and both seeds
 - [ ] e2e doctor fixtures: absent profile green, corrupt profile red
 - [ ] The gitignore self-protection test fails if the `.gitignore` is removed
-- [ ] `gofmt`, `go vet`, `go test ./...` clean
+- [ ] `gofmt`, `go vet`, `go test ./...`, and the modernize analyzer clean
 
 ---
 
@@ -262,7 +262,7 @@ first contact with a real repository and the measure of the authoring job.
 - [ ] Maintainer reviews the trajectory content itself — the "busy staff
       engineer" judgment belongs to a human, not to this checklist
 - [ ] The effort record exists and is honest
-- [ ] `gofmt`, `go vet`, `go test ./...` clean
+- [ ] `gofmt`, `go vet`, `go test ./...`, and the modernize analyzer clean
 
 ---
 
@@ -296,7 +296,7 @@ mechanically where possible, honestly where not.
 - [ ] Both proof transcripts (definition validation, task both-ways checks)
       attached to the PR
 - [ ] Follow-up issues filed for anything not absorbed
-- [ ] `gofmt`, `go vet`, `go test ./...` clean
+- [ ] `gofmt`, `go vet`, `go test ./...`, and the modernize analyzer clean
 
 ## Explicitly deferred
 

@@ -115,7 +115,9 @@ Base chaining keeps `gh pr merge` available and is how this repo stacks.
    `test: add failing test for {behaviour}`
 3. **Implement** — build until it passes, following existing patterns. Logical
    commits with real bodies.
-4. **Verify** — `gofmt -l .`, `go vet ./...`, `go test ./...`, `go build ./...`
+4. **Verify** — `gofmt -l .`, `go vet ./...`, `go test ./...`, `go build ./...`,
+   and the modernize analyzer (the pinned `go run` line in
+   [`ci.yml`](../../../.github/workflows/ci.yml))
 5. **Refine docs** — update with what implementation taught you
 
 **For architecture and infrastructure:** the ADR (from `/refine-issue` or written
