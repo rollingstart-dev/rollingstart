@@ -14,3 +14,25 @@ typecheck = "pnpm type-check"
 test      = "pnpm test:unit"
 lint      = "pnpm check"
 
+# The database rituals from Rallly's CONTRIBUTING — declared and counted
+# here, run by nothing until the session loop (M3), which prompts before
+# the destructive one. Bringing the stack up (`pnpm docker:up`) is
+# deliberately absent: Rolling Start never orchestrates the environment.
+[operations]
+# `prisma migrate reset` asks the operator to confirm, then drops the
+# database, replays every migration, and runs the seed. --force disarms
+# that confirmation, because consent for a destructive ritual is the
+# harness's prompt, once, up front, and an operation that hangs on a
+# hidden prompt is a trap.
+reset-db          = { command = "pnpm db:reset --force", destructive = true }
+# Test users and random data, on their own: the ritual when the schema is
+# fine and only the data is stale. The reset seeds too.
+seed-db           = { command = "pnpm db:seed" }
+# Pending migrations applied, nothing prompted, nothing dropped — the
+# ritual after a pull that brought schema changes. Not `db:migrate`:
+# `prisma migrate dev` wants a migration name when the schema moved, and
+# refuses to run non-interactively.
+apply-migrations  = { command = "pnpm db:deploy" }
+# The Prisma client is a generated artifact; a stale one fails the build
+# and the type-check in ways that read as bugs in the code.
+regenerate-client = { command = "pnpm db:generate" }
