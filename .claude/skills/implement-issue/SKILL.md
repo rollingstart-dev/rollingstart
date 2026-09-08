@@ -98,7 +98,11 @@ past a few hundred reviewable lines — plan a **base-chained stack** instead:
   reviewed contracts
 - Branch each slice off the one beneath it and open with `--base <branch-below>`.
   GitHub retargets to `main` automatically as bases merge — the only retargeting
-  a stack needs
+  a stack needs. It is the repository's delete-head-branch-on-merge setting
+  doing that: the retarget fires when GitHub deletes the merged base in its
+  own merge flow. Deleting a merged base by hand closes the PRs stacked on it
+  instead (#47 was closed that way and reopened), so leave the deletion to
+  the setting
 - Hand the whole stack over when every slice has settled; merge bottom-up
 
 **Never use GitHub's native stacked PRs.** Do not run `gh stack init/add/submit`.
