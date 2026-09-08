@@ -89,10 +89,20 @@ The composition rule: the commands phrase keeps its three v0 forms —
 `declared` governs both. So `instance definition loaded (3 commands, 2
 operations declared)`, `… (1 command, 1 operation declared)`,
 `… (no commands, 2 operations declared)`. A definition with no operations
-keeps the shorter v0 wording unchanged. Operations never add rows to the
-instance-command-health section — that section reports command health, and
-a definition declaring operations but no commands still reads
-`nothing declared` there.
+keeps the shorter v0 wording unchanged. The first form, rendered:
+
+```
+Harness preconditions
+  ok    git repository       inside a git work tree
+  ok    working tree         working tree is clean
+  ok    line endings         core.autocrlf is unset
+  ok    instance definition  instance definition loaded (3 commands, 2 operations declared)
+  ok    file watcher         file events are delivered
+```
+
+Operations never add rows to the instance-command-health section — that
+section reports command health, and a definition declaring operations but no
+commands still reads `nothing declared` there.
 
 Any `FAIL` in this section is blocking: nothing can proceed and no lesson can
 be served. Doctor still runs the second section when it can, because a learner
@@ -234,7 +244,9 @@ override: named, not fought. Every path-valued pointer is checked — each
 never checked at all, because doctor performs no network I/O. Existence
 follows symlinks, so a link to nowhere is a missing target. The notes print
 ahead of the report alongside the git-override note — git's first, then one
-line per missing pointer in declaration order —
+line per missing pointer, `exemplary` entries in list order and
+`definition-of-ready` last, and one blank line between the notes and the
+report —
 
 ```
 note: corpus pointer apps/web/src/features/poll does not exist in this checkout
