@@ -109,13 +109,14 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # The modernize entry repeats ci.yml's pin on purpose: the
+          # The modernize entry repeats ci.yml's pin, and the guidelines
+          # entry repeats the implement-issue skill's, on purpose: the
           # allowlist matches a command prefix up to a word boundary, so
           # a version-free prefix ending at "@" does not match (tested),
-          # and the pin cannot be referenced. Bump both files together.
+          # and a pin cannot be referenced. Bump each pair together.
           claude_args: |
             --model claude-opus-5
-            --allowedTools "Read,Glob,Grep,Bash(go build:*),Bash(go vet:*),Bash(go test:*),Bash(gofmt:*),Bash(go mod tidy:*),Bash(go run golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@v0.23.0:*),mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue list:*),Bash(gh issue view:*)"
+            --allowedTools "Read,Glob,Grep,Bash(go build:*),Bash(go vet:*),Bash(go test:*),Bash(gofmt:*),Bash(go mod tidy:*),Bash(go run golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@v0.23.0:*),Bash(go run github.com/JetBrains/go-modern-guidelines@v0.1.1:*),mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh issue list:*),Bash(gh issue view:*)"
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
@@ -136,7 +137,10 @@ jobs:
             Run them bare: the allowlist matches command prefixes,
             so a pipe or redirect is denied and nobody is here to approve
             it. Never `go mod tidy` without `-diff` — it rewrites the tree
-            you are reviewing.
+            you are reviewing. To hold a diff to REVIEW.md's modern-Go
+            bullet, run the pinned guidelines line from
+            .claude/skills/implement-issue/SKILL.md and read the whole
+            output.
 
             **Dedupe before posting.** Repeated reviews on the same PR
             (each push triggers a re-run) and recurring nits across PRs

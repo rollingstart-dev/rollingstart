@@ -160,7 +160,12 @@ where `slices.Contains` exists, `errors.As` where `errors.AsType` exists, a
 three-clause `for` over an integer. Agents write those from habit, and the
 first run over this repository found four. It is the gopls command rather
 than Go 1.26's built-in `go fix -diff` because the built-in set lacks
-`errorsastype`; a finding fails the run by exit status. The repository's own
+`errorsastype`; a finding fails the run by exit status. The judgment half —
+`errors.Is` over `==`, `cmp.Or` over a nil-check chain, `slices.Index` over
+the hand loop (the analyzer rewrites the search loop that returns a bool,
+not the one that keeps the index) — has no analyzer; the implement-issue
+skill lists it once per task before writing Go, and
+[`REVIEW.md`](../REVIEW.md) asks reviewers to check it. The repository's own
 [`.rollingstart/instance.toml`](../.rollingstart/instance.toml) declares the
 same build, test, and lint checks, so a run of the instance's commands covers
 everything CI does except `go mod tidy -diff`, the analyzer, and the macOS
@@ -172,7 +177,13 @@ the binary's contract, tested the way a learner meets it.
 
 ### Merging
 
-Squash merge to `main`. Delete the branch after.
+Merge commits to `main`, never squash. A squash rewrites the history every
+upper layer of a stack descends from, so each layer above it conflicts and
+needs a rebase before it can merge — #47 did, after #46 was squashed. Stacks
+are common here, so the repository allows only merge commits; the branch's
+own commits, with the bodies this repository asks for, are the history.
+GitHub deletes the head branch on merge, which is what retargets the next
+layer of a stack to `main`.
 
 ## Commit messages
 

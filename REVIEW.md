@@ -41,6 +41,13 @@ recover once crossed:
 - Exported identifiers have doc comments. Unexported ones have comments where
   the *why* isn't obvious from the name.
 - Table-driven tests where there is more than one case.
+- Modern Go for the version go.mod declares. The `modernize` gate in CI
+  catches the mechanical half; the rest is judgment — a hand loop where
+  `slices.Index` or `slices.Reverse` has the function, `err == target` for
+  `errors.Is`, `time.Now().Sub(t)` for `time.Since(t)`, a nil-check chain
+  for `cmp.Or`. The reference is the guidelines list the implement-issue
+  skill runs before writing Go; the pinned line is in
+  [`.claude/skills/implement-issue/SKILL.md`](.claude/skills/implement-issue/SKILL.md).
 
 ## Tests
 

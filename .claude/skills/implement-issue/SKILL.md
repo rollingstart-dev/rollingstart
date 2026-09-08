@@ -98,8 +98,14 @@ past a few hundred reviewable lines — plan a **base-chained stack** instead:
   reviewed contracts
 - Branch each slice off the one beneath it and open with `--base <branch-below>`.
   GitHub retargets to `main` automatically as bases merge — the only retargeting
-  a stack needs
-- Hand the whole stack over when every slice has settled; merge bottom-up
+  a stack needs. It is the repository's delete-head-branch-on-merge setting
+  doing that: the retarget fires when GitHub deletes the merged base in its
+  own merge flow. Deleting a merged base by hand closes the PRs stacked on it
+  instead (#47 was closed that way and reopened), so leave the deletion to
+  the setting
+- Hand the whole stack over when every slice has settled; merge bottom-up,
+  with merge commits — the repository allows nothing else, because a squash
+  rewrites the history the layer above descends from and strands it
 
 **Never use GitHub's native stacked PRs.** Do not run `gh stack init/add/submit`.
 Native stacks cannot be admin-merged and render poorly for reviewers on mobile.
@@ -113,8 +119,33 @@ Base chaining keeps `gh pr merge` available and is how this repo stacks.
    is the spec. Commit: `docs: describe {behaviour}`
 2. **Failing test** — encode the expected behaviour. It must fail now. Commit:
    `test: add failing test for {behaviour}`
-3. **Implement** — build until it passes, following existing patterns. Logical
-   commits with real bodies.
+3. **Implement** — build until it passes, following existing patterns. Before
+   writing Go for the task, list the modern-Go guidelines for this module once
+   and treat the output as the idiom reference. It prints only what applies to
+   the Go version go.mod declares, newest first, and the newest entries may
+   postdate the model's training data:
+
+   ```
+   go run github.com/JetBrains/go-modern-guidelines@v0.1.1 list --file-path go.mod
+   ```
+
+   Run it from the repository root and read the whole output — never through
+   `head`, `tail`, or `grep`, which is how a fifty-line list loses the entry
+   that mattered. It is one list per Go version, not per file, and the
+   `--file-path` is what makes it go.mod's version: without it the tool reads
+   the installed toolchain's, which is the drift it exists to prevent. For
+   detail and an example:
+
+   ```
+   go run github.com/JetBrains/go-modern-guidelines@v0.1.1 explain <id> [<id>...]
+   ```
+
+   Follow a returned guideline even where nearby code uses the older pattern;
+   skip it only when it would not compile, would change behaviour, or clearly
+   does not match the code being edited. The pin appears on both lines
+   above and in the review bot's allowlist in
+   [`review.yml`](../../../.github/workflows/review.yml); bump all three
+   together. Logical commits with real bodies.
 4. **Verify** — `gofmt -l .`, `go vet ./...`, `go test ./...`, `go build ./...`,
    and the modernize analyzer (the pinned `go run` line in
    [`ci.yml`](../../../.github/workflows/ci.yml))
