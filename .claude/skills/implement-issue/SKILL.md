@@ -136,7 +136,10 @@ Base chaining keeps `gh pr merge` available and is how this repo stacks.
 
    Follow a returned guideline even where nearby code uses the older pattern;
    skip it only when it would not compile, would change behaviour, or clearly
-   does not match the code being edited. Logical commits with real bodies.
+   does not match the code being edited. The pin appears on both lines
+   above and in the review bot's allowlist in
+   [`review.yml`](../../../.github/workflows/review.yml); bump all three
+   together. Logical commits with real bodies.
 4. **Verify** — `gofmt -l .`, `go vet ./...`, `go test ./...`, `go build ./...`,
    and the modernize analyzer (the pinned `go run` line in
    [`ci.yml`](../../../.github/workflows/ci.yml))

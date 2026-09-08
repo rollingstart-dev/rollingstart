@@ -43,10 +43,11 @@ recover once crossed:
 - Table-driven tests where there is more than one case.
 - Modern Go for the version go.mod declares. The `modernize` gate in CI
   catches the mechanical half; the rest is judgment — a hand loop where
-  `slices.Index` or `maps.Clone` has the function, `err == target` for
+  `slices.Index` or `slices.Reverse` has the function, `err == target` for
   `errors.Is`, `time.Now().Sub(t)` for `time.Since(t)`, a nil-check chain
-  for `cmp.Or`. The reference is the guidelines list for this module:
-  `go run github.com/JetBrains/go-modern-guidelines@v0.1.1 list --file-path go.mod`.
+  for `cmp.Or`. The reference is the guidelines list the implement-issue
+  skill runs before writing Go; the pinned line is in
+  [`.claude/skills/implement-issue/SKILL.md`](.claude/skills/implement-issue/SKILL.md).
 
 ## Tests
 

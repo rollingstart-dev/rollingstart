@@ -162,9 +162,10 @@ first run over this repository found four. It is the gopls command rather
 than Go 1.26's built-in `go fix -diff` because the built-in set lacks
 `errorsastype`; a finding fails the run by exit status. The judgment half —
 `errors.Is` over `==`, `cmp.Or` over a nil-check chain, `slices.Index` over
-the hand loop — has no analyzer; the implement-issue skill lists it once per
-task before writing Go, and [`REVIEW.md`](../REVIEW.md) asks reviewers to
-check it. The repository's own
+the hand loop (the analyzer rewrites the search loop that returns a bool,
+not the one that keeps the index) — has no analyzer; the implement-issue
+skill lists it once per task before writing Go, and
+[`REVIEW.md`](../REVIEW.md) asks reviewers to check it. The repository's own
 [`.rollingstart/instance.toml`](../.rollingstart/instance.toml) declares the
 same build, test, and lint checks, so a run of the instance's commands covers
 everything CI does except `go mod tidy -diff`, the analyzer, and the macOS
