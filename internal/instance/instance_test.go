@@ -96,6 +96,11 @@ func TestLoadInvalid(t *testing.T) {
 		// Decoder-produced failures leave it empty: their keys are the
 		// library's to shape.
 		wantKey string
+		// wantKeys, when set, asserts the error is the join of exactly
+		// these *ParseError Keys in this order — the loader reports every
+		// value fault at once, sections in the page's order, and a value
+		// that fails one check is not reported again for the next.
+		wantKeys []string
 	}{
 		{
 			name:      "unknown top-level table",
@@ -117,6 +122,34 @@ func TestLoadInvalid(t *testing.T) {
 			toml:      "[commands]\nbuild = \"\"\n",
 			wantInMsg: []string{"commands.build", "empty"},
 			wantKey:   "commands.build",
+		},
+		// Every value fault at once, in the page's order — commands, then
+		// operations by name, then corpus lists in declaration order.
+		{
+			name:      "two faults in two sections are both reported",
+			toml:      "[commands]\nbuild = \"\"\n[corpus]\nexemplary = [\" apps/web\"]\n",
+			wantInMsg: []string{"commands.build is empty", `" apps/web" is padded`},
+			wantKeys:  []string{"commands.build", "corpus.exemplary"},
+		},
+		{
+			name:      "operations report in name order, each its own fault",
+			toml:      "[operations]\nseed-db = { command = \"\" }\nreset-db = { destructive = true }\n",
+			wantInMsg: []string{"operations.reset-db has no command", "operations.seed-db.command is empty"},
+			wantKeys:  []string{"operations.reset-db", "operations.seed-db.command"},
+		},
+		{
+			name:      "every bad URL in a list, not just the first",
+			toml:      "[corpus]\nexemplar-prs = [\"one\", \"two\", \"https://example.com/pull/1\", \"three\"]\n",
+			wantInMsg: []string{`"one"`, `"two"`, `"three"`},
+			wantKeys:  []string{"corpus.exemplar-prs", "corpus.exemplar-prs", "corpus.exemplar-prs"},
+		},
+		// A value that fails one check is not reported again for the next:
+		// a padded operation name with no command is one fault, the name.
+		{
+			name:      "one value, one report",
+			toml:      "[operations]\n\" reset-db\" = { destructive = true }\n",
+			wantInMsg: []string{`" reset-db"`, "padded"},
+			wantKeys:  []string{"operations"},
 		},
 		{
 			name:      "whitespace-only command string",
@@ -314,16 +347,43 @@ func TestLoadInvalid(t *testing.T) {
 				t.Errorf("error %q does not name the file %q", err, path)
 			}
 			if tt.wantKey != "" {
-				var pe *ParseError
-				if !errors.As(err, &pe) {
+				pe, ok := errors.AsType[*ParseError](err)
+				if !ok {
 					t.Fatalf("error %v is not a *ParseError", err)
 				}
 				if pe.Key != tt.wantKey {
 					t.Errorf("Key = %q, want %q", pe.Key, tt.wantKey)
 				}
 			}
+			if len(tt.wantKeys) > 0 {
+				if got := parseErrorKeys(err); !slices.Equal(got, tt.wantKeys) {
+					t.Errorf("reported keys = %q, want %q\n%v", got, tt.wantKeys, err)
+				}
+			}
 		})
 	}
+}
+
+// parseErrorKeys walks a joined error and returns every *ParseError's Key
+// in order. errors.As stops at the first match, which is exactly what a
+// test of "all of them, in order" cannot use.
+func parseErrorKeys(err error) []string {
+	var keys []string
+	var walk func(error)
+	walk = func(e error) {
+		switch x := e.(type) {
+		case *ParseError:
+			keys = append(keys, x.Key)
+		case interface{ Unwrap() []error }:
+			for _, c := range x.Unwrap() {
+				walk(c)
+			}
+		case interface{ Unwrap() error }:
+			walk(x.Unwrap())
+		}
+	}
+	walk(err)
+	return keys
 }
 
 func TestLoadOperations(t *testing.T) {
