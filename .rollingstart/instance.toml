@@ -1,7 +1,10 @@
 # Rolling Start's own instance definition. This repository is meant to
 # become an instance of its own tool, and CI verifies the harness probes
 # against it as one. Commands only, mirroring what CI runs: the v0 shape
-# (docs/reference/instance-toml.md), still valid — nothing forces adoption.
+# (docs/reference/instance-toml.md), kept through M2 as the proof that
+# schema growth is additive. Operations may never apply here — a Go CLI
+# with no services has no rituals to declare — and corpus pointers wait
+# for the milestone that authors this repository as an instance.
 [commands]
 build = "go build ./..."
 test  = "go test ./..."
