@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -554,6 +555,9 @@ func TestLoadThisRepositoryDefinition(t *testing.T) {
 	// continuing to load is the additive-growth proof.
 	if ops := inst.Operations(); len(ops) != 0 {
 		t.Errorf("the repository's own definition declares operations %v; it stays commands-only", ops)
+	}
+	if c := inst.Corpus(); !reflect.DeepEqual(c, Corpus{}) {
+		t.Errorf("the repository's own definition declares corpus pointers %+v; it stays commands-only", c)
 	}
 }
 
