@@ -18,6 +18,12 @@ the criteria up front is cheaper than learning them in review.
   once should have been a stack.
 - Did in-flight additions pass the three tests in
   [`docs/workflow.md`](docs/workflow.md)? If not, they belong in a follow-up.
+- Claims about an example target's code (`examples/*`) are cited by path
+  and pin against the checkout named in that example's README. If that
+  checkout is on this machine, read it and check them; if it is not, don't
+  sweat it — review the definition's shape and the reasoning, and don't
+  report the missing checkout as a finding. The engine is what review here
+  is for; the examples are not worth a workaround.
 
 ## The architectural seams
 

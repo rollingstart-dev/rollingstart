@@ -40,6 +40,7 @@ before proposing anything structural.
 | `docs/plans/` | Expanded plan per milestone, plus retrospectives |
 | `docs/decisions/` | ADRs for decisions made after the roadmap |
 | `.claude/skills/` | `/plan-milestone`, `/refine-issue`, `/implement-issue`, `/milestone-endgame` |
+| `../rallly` | Rallly reference checkout, pinned — [`examples/rallly/README.md`](examples/rallly/README.md) § The reference checkout |
 
 ## Rules
 
@@ -116,6 +117,15 @@ to become an instance of its own tool, so its history is teaching material.
 
 **Stop on surprises.** An unexpected incompatibility or an uncovered design
 question means stop and ask, not guess and continue.
+
+**Facts about Rallly come from the pinned checkout at `../rallly`.** Not
+from memory, and not from an unpinned API read: on #50 both produced
+confident claims that a `grep` at the pin would have settled in seconds.
+When a claim rests on Rallly, cite the path and the pin. If `../rallly` is
+there, read it; if it is not — the PR review bot's sandbox, for one — don't
+sweat it: leave the claim to whoever has the checkout, and don't build a
+workaround. The checkout is a reference to read; the harness runs against
+a writable copy with its stack up (#53).
 
 ## Conventions
 

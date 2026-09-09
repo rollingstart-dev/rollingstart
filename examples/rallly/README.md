@@ -9,7 +9,7 @@ is measured against (`docs/plans/m1-rolling-doctor.md`).
 ## Use it
 
 ```sh
-git clone https://github.com/lukevella/rallly
+git clone https://github.com/lukevella/rallly   # the instance author's own clone, wherever they work
 cp -r examples/rallly/.rollingstart rallly/
 cd rallly && git add .rollingstart && git commit -m "Rolling Start instance definition"
 rolling doctor
@@ -17,6 +17,35 @@ rolling doctor
 
 Commit the directory: an untracked `.rollingstart/` is exactly what the
 working-tree probe reports, and it is right to.
+
+## The reference checkout
+
+Every claim this example makes about Rallly — a script's name, what the
+seed does, which prompt a Prisma command raises — is checked against a
+pinned clone. This one is the developer's, a sibling of this repository, and
+is not the instance author's clone above:
+
+```sh
+git clone https://github.com/lukevella/rallly ../rallly
+git -C ../rallly checkout --detach aab791da5177f4a7653c8904e754808d9b4968ef
+```
+
+Pinned at `aab791da` — Rallly's `main` on 2026-09-09, just past v4.14.0.
+To bump: `git -C ../rallly fetch origin && git -C ../rallly checkout
+--detach <new>`, re-check every claim below against the checkout — the two
+tables against `package.json`'s scripts and
+`packages/database/prisma.config.ts`, § What green requires against
+`packageManager` and `engines`, and the recipe against
+`docker-compose.dev.yml` and the two `.env.sample`s, the operations table's
+account of the rituals against `CONTRIBUTING.md` and
+`packages/database/prisma/seed.ts`, and its Prisma-version reasoning
+against the `prisma` dependency in `packages/database/package.json` — and
+update the pin in the same change, in all three places this file records
+it: the clone command, the "Pinned at" line, and the validation recipe. The
+checkout is a reference to read; the harness
+runs against a writable copy with its stack up, which is the dev
+environment tracked in
+[#53](https://github.com/rollingstart-dev/rollingstart/issues/53).
 
 ## What the commands are
 
@@ -67,7 +96,8 @@ own compose file. The host keeps only the pulled images.
 
 ```sh
 W=$(mktemp -d /tmp/rallly-validation.XXXX)
-git clone --depth 1 https://github.com/lukevella/rallly "$W/rallly"
+git clone https://github.com/lukevella/rallly "$W/rallly"
+git -C "$W/rallly" checkout -q --detach aab791da5177f4a7653c8904e754808d9b4968ef   # the pin above
 cp -r examples/rallly/.rollingstart "$W/rallly/"
 git -C "$W/rallly" add .rollingstart && git -C "$W/rallly" commit -qm "instance definition"
 go build -o "$W/rolling" ./cmd/rolling
