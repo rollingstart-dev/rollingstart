@@ -582,3 +582,21 @@ func TestDoctorGitAndCorpusNotesOrder(t *testing.T) {
 		t.Errorf("notes out of order or mis-separated:\nwant prefix:\n%s\ngot:\n%s", want, res.stdout)
 	}
 }
+
+// TestDoctorReportsEveryValueFault: two bad values are two lines under the
+// one FAIL row, the way two unknown keys already are — the author fixes
+// both in one pass.
+func TestDoctorReportsEveryValueFault(t *testing.T) {
+	repo := newRepo(t)
+	writeDefinition(t, repo, "[commands]\nbuild = \"\"\ntest = \"  \"\n")
+	commitAll(t, repo)
+	res := rolling(t, runOptions{dir: repo}, "doctor")
+	if res.code != 1 {
+		t.Fatalf("exit %d, want 1\n%s", res.code, res.stdout)
+	}
+	// One string, so the test pins order and adjacency, not two substrings.
+	mustContain(t, res.stdout,
+		"  FAIL  instance definition  .rollingstart/instance.toml: commands.build is empty: declare a command or remove the key\n"+
+			"                             .rollingstart/instance.toml: commands.test \"  \" is only whitespace: declare a command or remove the key\n",
+	)
+}

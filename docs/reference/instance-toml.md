@@ -120,7 +120,10 @@ Duplicate names need no rule of ours — TOML itself rejects a redefined
 key, with a position. Like the value checks in `[commands]`, these run
 after decoding, so they name the file and the offending key rather than a
 line and column; only the decoder's own failures — unknown keys, type
-mismatches, broken syntax — carry `file:line:col`.
+mismatches, broken syntax — carry `file:line:col`. And like the decoder's
+unknown keys, they are all reported at once: three bad values cost one run,
+not three. A file that does not decode has no values to check, so a key
+typo and a bad value are two runs, not three.
 
 Commands and operations live in separate namespaces: an operation may be
 called `build` without colliding with `[commands].build`, because anything
@@ -177,8 +180,13 @@ parsing makes the addition purely additive.
 Two kinds of wrong, told apart on purpose. A malformed file fails at load:
 the decoder's own failures — an unknown key, a type mismatch, broken syntax
 — carry `file:line:col`, and the value checks above name the file and the
-offending key, the same shape as the empty-command rule in `[commands]`. A
-well-formed pointer whose target is absent from *this* checkout is not a
+offending key, the same shape as the empty-command rule in `[commands]`.
+Every fault the value checks find is reported together, one line each, in
+the order this page presents the sections — commands, then operations by
+name, then the corpus lists in declaration order, then `definition-of-ready`
+— so a definition is fixed in one pass rather than one fault per run; a
+value that fails one check is not reported again for the checks after it.
+A well-formed pointer whose target is absent from *this* checkout is not a
 load error: the file is fine, the working copy just doesn't match it.
 `rolling doctor` reports that case as a note, never as a failure — see
 [`rolling-doctor.md`](rolling-doctor.md). And nothing ever fetches a URL to
@@ -192,7 +200,9 @@ author believes it is configured — the worst kind of wrong, because nothing
 looks broken.
 
 Parse errors carry the file position and the offending key, and `rolling`
-displays them verbatim. A typo should cost seconds, not a debugging session.
+displays them verbatim — every unknown key at once, and, once the file
+decodes, every bad value at once, one line each. A typo should cost seconds,
+not a debugging session, and three bad values should not cost three runs.
 
 One consequence, deliberate: you cannot pre-declare sections from schema
 versions the harness cannot read yet. The schema and the code that reads it
