@@ -143,6 +143,15 @@ func TestLoadInvalid(t *testing.T) {
 			wantInMsg: []string{`"one"`, `"two"`, `"three"`},
 			wantKeys:  []string{"corpus.exemplar-prs", "corpus.exemplar-prs", "corpus.exemplar-prs"},
 		},
+		// Distinctness is TOML's rule, not ours: a redefined key fails at
+		// decode, with a position, before any value check runs. Pinned so a
+		// decoder swap or a later name-normalizing pass cannot quietly fold
+		// two operations into one with the suite still green.
+		{
+			name:      "duplicate operation name",
+			toml:      "[operations]\nreset-db = { command = \"a\" }\nreset-db = { command = \"b\" }\n",
+			wantInMsg: []string{"reset-db", "already", "3:"},
+		},
 		// A value that fails one check is not reported again for the next:
 		// a padded operation name with no command is one fault, the name.
 		{
