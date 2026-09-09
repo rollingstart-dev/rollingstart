@@ -36,10 +36,10 @@ To bump: `git -C ../rallly fetch origin && git -C ../rallly checkout
 tables against `package.json`'s scripts and
 `packages/database/prisma.config.ts`, § What green requires against
 `packageManager` and `engines`, and the recipe against
-`docker-compose.dev.yml` and the two `.env.sample`s — and update this pin
-in the same change. A session without the checkout reads the same bytes
-with `gh api repos/lukevella/rallly/contents/<path>?ref=<pin>`. The
-checkout is a reference to read; the harness
+`docker-compose.dev.yml` and the two `.env.sample`s, the operations table's
+account of the rituals against `CONTRIBUTING.md` and
+`packages/database/prisma/seed.ts` — and update this pin in the same
+change. The checkout is a reference to read; the harness
 runs against a writable copy with its stack up, which is the dev
 environment tracked in
 [#53](https://github.com/rollingstart-dev/rollingstart/issues/53).
@@ -93,7 +93,8 @@ own compose file. The host keeps only the pulled images.
 
 ```sh
 W=$(mktemp -d /tmp/rallly-validation.XXXX)
-git clone --depth 1 https://github.com/lukevella/rallly "$W/rallly"
+git clone https://github.com/lukevella/rallly "$W/rallly"
+git -C "$W/rallly" checkout -q --detach aab791da5177f4a7653c8904e754808d9b4968ef   # the pin above
 cp -r examples/rallly/.rollingstart "$W/rallly/"
 git -C "$W/rallly" add .rollingstart && git -C "$W/rallly" commit -qm "instance definition"
 go build -o "$W/rolling" ./cmd/rolling
