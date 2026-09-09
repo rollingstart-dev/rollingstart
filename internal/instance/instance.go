@@ -163,6 +163,17 @@ func Load(path string) (*Instance, error) {
 		return nil, parseError(path, err)
 	}
 
+	// Every value fault is collected and reported together, the way
+	// parseError already reports every unknown key: a definition with
+	// three faults costs one run, not three. Sections in the page's order,
+	// operations by sorted name, lists in declaration order — so the
+	// report is deterministic — and a value that fails one check is not
+	// reported again for the checks after it.
+	var faults []error
+	fault := func(key, msg string) {
+		faults = append(faults, &ParseError{Path: path, Key: key, Msg: msg})
+	}
+
 	inst := &Instance{}
 	for _, c := range []struct {
 		name string
@@ -177,17 +188,14 @@ func Load(path string) (*Instance, error) {
 			continue
 		}
 		if strings.TrimSpace(*c.cmd) == "" {
-			return nil, &ParseError{
-				Path: path,
-				Key:  "commands." + c.name,
-				Msg:  emptyValueMsg("commands."+c.name, *c.cmd, "declare a command or remove the key"),
-			}
+			fault("commands."+c.name, emptyValueMsg("commands."+c.name, *c.cmd, "declare a command or remove the key"))
+			continue
 		}
 		inst.commands = append(inst.commands, Command{Name: c.name, Cmd: *c.cmd})
 	}
 
-	// Sorted names make the first error deterministic as well as fixing the
-	// canonical accessor order.
+	// Sorted names fix the canonical accessor order and the report order
+	// alike; a decoded TOML table has no declaration order to preserve.
 	for _, name := range slices.Sorted(maps.Keys(doc.Operations)) {
 		if strings.TrimSpace(name) == "" {
 			// A whitespace-only name is echoed back quoted: %q turns the
@@ -197,36 +205,24 @@ func Load(path string) (*Instance, error) {
 			if name != "" {
 				msg = fmt.Sprintf("operations declares an operation whose name %q is only whitespace: name the ritual or remove it", name)
 			}
-			return nil, &ParseError{
-				Path: path,
-				Key:  "operations",
-				Msg:  msg,
-			}
+			fault("operations", msg)
+			continue
 		}
 		// A padded name looks identical to its trimmed form everywhere it
 		// is displayed and matches it nowhere it is compared — a verifier
 		// selecting reset-db could never reach " reset-db".
 		if name != strings.TrimSpace(name) {
-			return nil, &ParseError{
-				Path: path,
-				Key:  "operations",
-				Msg:  fmt.Sprintf("operations declares an operation whose name %q is padded with whitespace: remove the padding", name),
-			}
+			fault("operations", fmt.Sprintf("operations declares an operation whose name %q is padded with whitespace: remove the padding", name))
+			continue
 		}
 		op := doc.Operations[name]
 		if op.Command == nil {
-			return nil, &ParseError{
-				Path: path,
-				Key:  "operations." + name,
-				Msg:  fmt.Sprintf("operations.%s has no command: declare one or remove the operation", name),
-			}
+			fault("operations."+name, fmt.Sprintf("operations.%s has no command: declare one or remove the operation", name))
+			continue
 		}
 		if strings.TrimSpace(*op.Command) == "" {
-			return nil, &ParseError{
-				Path: path,
-				Key:  "operations." + name + ".command",
-				Msg:  emptyValueMsg("operations."+name+".command", *op.Command, "declare a command or remove the operation"),
-			}
+			fault("operations."+name+".command", emptyValueMsg("operations."+name+".command", *op.Command, "declare a command or remove the operation"))
+			continue
 		}
 		inst.operations = append(inst.operations, Operation{Name: name, Cmd: *op.Command, Destructive: op.Destructive})
 	}
@@ -235,78 +231,49 @@ func Load(path string) (*Instance, error) {
 		// An empty entry has no value to quote, so its 1-based position
 		// says which one; the other rejections identify themselves by
 		// echoing the offending value.
-		if strings.TrimSpace(p) == "" {
-			return nil, &ParseError{
-				Path: path,
-				Key:  "corpus.exemplary",
-				Msg:  emptyValueMsg(fmt.Sprintf("corpus.exemplary entry %d", n+1), p, "point at a path or remove it"),
-			}
-		}
-		if p != strings.TrimSpace(p) {
-			return nil, &ParseError{
-				Path: path,
-				Key:  "corpus.exemplary",
-				Msg:  fmt.Sprintf("corpus.exemplary entry %q is padded with whitespace: remove the padding", p),
-			}
-		}
-		if reason := corpusPathReason(p); reason != "" {
-			return nil, &ParseError{
-				Path: path,
-				Key:  "corpus.exemplary",
-				Msg:  fmt.Sprintf("corpus.exemplary entry %q %s", p, reason),
+		switch {
+		case strings.TrimSpace(p) == "":
+			fault("corpus.exemplary", emptyValueMsg(fmt.Sprintf("corpus.exemplary entry %d", n+1), p, "point at a path or remove it"))
+		case p != strings.TrimSpace(p):
+			fault("corpus.exemplary", fmt.Sprintf("corpus.exemplary entry %q is padded with whitespace: remove the padding", p))
+		default:
+			if reason := corpusPathReason(p); reason != "" {
+				fault("corpus.exemplary", fmt.Sprintf("corpus.exemplary entry %q %s", p, reason))
 			}
 		}
 	}
 	for n, u := range doc.Corpus.ExemplarPRs {
-		if strings.TrimSpace(u) == "" {
-			return nil, &ParseError{
-				Path: path,
-				Key:  "corpus.exemplar-prs",
-				Msg:  emptyValueMsg(fmt.Sprintf("corpus.exemplar-prs entry %d", n+1), u, "point at a pull request or remove it"),
-			}
-		}
-		if u != strings.TrimSpace(u) {
-			return nil, &ParseError{
-				Path: path,
-				Key:  "corpus.exemplar-prs",
-				Msg:  fmt.Sprintf("corpus.exemplar-prs entry %q is padded with whitespace: remove the padding", u),
-			}
-		}
-		// url.Parse alone is not the check: it accepts a bare repository
-		// path as a relative URL. The spec pins absolute, http(s), and a
-		// nonempty host — and nothing ever fetches one.
-		parsed, err := url.Parse(u)
-		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-			return nil, &ParseError{
-				Path: path,
-				Key:  "corpus.exemplar-prs",
-				Msg:  fmt.Sprintf("corpus.exemplar-prs entry %q is not an absolute http(s) URL: write the pull request's full address", u),
+		switch {
+		case strings.TrimSpace(u) == "":
+			fault("corpus.exemplar-prs", emptyValueMsg(fmt.Sprintf("corpus.exemplar-prs entry %d", n+1), u, "point at a pull request or remove it"))
+		case u != strings.TrimSpace(u):
+			fault("corpus.exemplar-prs", fmt.Sprintf("corpus.exemplar-prs entry %q is padded with whitespace: remove the padding", u))
+		default:
+			// url.Parse alone is not the check: it accepts a bare
+			// repository path as a relative URL. The spec pins absolute,
+			// http(s), and a nonempty host — and nothing ever fetches one.
+			parsed, err := url.Parse(u)
+			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+				fault("corpus.exemplar-prs", fmt.Sprintf("corpus.exemplar-prs entry %q is not an absolute http(s) URL: write the pull request's full address", u))
 			}
 		}
 	}
 	if dor := doc.Corpus.DefinitionOfReady; dor != nil {
-		if strings.TrimSpace(*dor) == "" {
-			return nil, &ParseError{
-				Path: path,
-				Key:  "corpus.definition-of-ready",
-				Msg:  emptyValueMsg("corpus.definition-of-ready", *dor, "point at a document or remove the key"),
+		switch {
+		case strings.TrimSpace(*dor) == "":
+			fault("corpus.definition-of-ready", emptyValueMsg("corpus.definition-of-ready", *dor, "point at a document or remove the key"))
+		case *dor != strings.TrimSpace(*dor):
+			fault("corpus.definition-of-ready", fmt.Sprintf("corpus.definition-of-ready %q is padded with whitespace: remove the padding", *dor))
+		default:
+			if reason := corpusPathReason(*dor); reason != "" {
+				fault("corpus.definition-of-ready", fmt.Sprintf("corpus.definition-of-ready %q %s", *dor, reason))
+			} else {
+				inst.corpus.DefinitionOfReady = *dor
 			}
 		}
-		if *dor != strings.TrimSpace(*dor) {
-			return nil, &ParseError{
-				Path: path,
-				Key:  "corpus.definition-of-ready",
-				Msg:  fmt.Sprintf("corpus.definition-of-ready %q is padded with whitespace: remove the padding", *dor),
-			}
-		}
-		if reason := corpusPathReason(*dor); reason != "" {
-			return nil, &ParseError{
-				Path: path,
-				Key:  "corpus.definition-of-ready",
-				Msg:  fmt.Sprintf("corpus.definition-of-ready %q %s", *dor, reason),
-			}
-		}
-		inst.corpus.DefinitionOfReady = *dor
+	}
+	if len(faults) > 0 {
+		return nil, errors.Join(faults...)
 	}
 	// An explicitly empty list declares nothing, the same as an absent key;
 	// normalizing to nil gives consumers one "nothing declared" state
