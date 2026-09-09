@@ -59,7 +59,7 @@ the **AGPL disposition for Rallly-derived task content** (sub-scope 2.5).
 
 ## Sub-scopes
 
-### 2.1 — Instance schema v1: operations and corpus pointers [PENDING]
+### 2.1 — Instance schema v1: operations and corpus pointers [COMPLETE]
 
 **Goal.** Extend `instance.toml` with declared operations and corpus pointers,
 keeping every v0 file valid.
@@ -90,10 +90,10 @@ keeping every v0 file valid.
 
 **Verification.**
 
-- [ ] Table-driven loader tests: each new section, strictness on unknown keys,
+- [x] Table-driven loader tests: each new section, strictness on unknown keys,
       v0 compatibility, empty/duplicate names
-- [ ] An e2e doctor fixture with a dangling corpus pointer reports it by name
-- [ ] `gofmt`, `go vet`, `go test ./...`, and the modernize analyzer clean
+- [x] An e2e doctor fixture with a dangling corpus pointer reports it by name
+- [x] `gofmt`, `go vet`, `go test ./...`, and the modernize analyzer clean
 
 ---
 
