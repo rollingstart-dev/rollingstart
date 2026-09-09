@@ -38,8 +38,11 @@ tables against `package.json`'s scripts and
 `packageManager` and `engines`, and the recipe against
 `docker-compose.dev.yml` and the two `.env.sample`s, the operations table's
 account of the rituals against `CONTRIBUTING.md` and
-`packages/database/prisma/seed.ts` — and update this pin in the same
-change. The checkout is a reference to read; the harness
+`packages/database/prisma/seed.ts`, and its Prisma-version reasoning
+against the `prisma` dependency in `packages/database/package.json` — and
+update the pin in the same change, in all three places this file records
+it: the clone command, the "Pinned at" line, and the validation recipe. The
+checkout is a reference to read; the harness
 runs against a writable copy with its stack up, which is the dev
 environment tracked in
 [#53](https://github.com/rollingstart-dev/rollingstart/issues/53).
