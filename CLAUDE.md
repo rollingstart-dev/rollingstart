@@ -119,12 +119,17 @@ to become an instance of its own tool, so its history is teaching material.
 question means stop and ask, not guess and continue.
 
 **Facts about Rallly come from the pinned checkout at `../rallly`.** Not
-from memory, and not from an API read one file at a time: on #50 both
-produced confident claims that a local `grep` would have settled in
-seconds. When a claim rests on Rallly, cite the path and the pin so a
-reviewer can check it. The checkout is a reference to read; the harness
-runs against a writable copy with its stack up (#53). If it is missing or
-not at the pin, that is a surprise — say so rather than route around it.
+from memory: on #50 memory and unpinned, ad-hoc API reads both produced
+confident claims that a `grep` at the pin would have settled in seconds.
+When a claim rests on Rallly, cite the path and the pin so a reviewer can
+check it. A session without the checkout — the review bot's sandbox has
+neither `../rallly` nor `git clone` — reads the same bytes with a pinned
+API call, `gh api repos/lukevella/rallly/contents/<path>?ref=<pin>`, and
+cites it the same way; what is forbidden is reading an unpinned head. On a
+machine that should have the checkout, its being missing or off the pin is
+a surprise — say so rather than route around it. The checkout is a
+reference to read; the harness runs against a writable copy with its stack
+up (#53).
 
 ## Conventions
 
