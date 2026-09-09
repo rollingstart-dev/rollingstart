@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -550,10 +551,21 @@ func TestLoadThisRepositoryDefinition(t *testing.T) {
 	if want := []string{"build", "test", "lint"}; !slices.Equal(names, want) {
 		t.Errorf("commands = %v, want %v", names, want)
 	}
+	// v0-shaped on purpose: nothing forces adoption, and this file's
+	// continuing to load is the additive-growth proof.
+	if ops := inst.Operations(); len(ops) != 0 {
+		t.Errorf("the repository's own definition declares operations %v; it stays commands-only", ops)
+	}
+	if c := inst.Corpus(); !reflect.DeepEqual(c, Corpus{}) {
+		t.Errorf("the repository's own definition declares corpus pointers %+v; it stays commands-only", c)
+	}
 }
 
 // TestLoadRallyExample: the example definition is the first one an instance
 // author sees, and it must parse — a typo there teaches the wrong lesson.
+// The operations are pinned too, so the example cannot drift from the
+// schema it demonstrates: the reset is the destructive one, disarmed with
+// --force, and the others are not.
 func TestLoadRallyExample(t *testing.T) {
 	inst, err := Load(filepath.Join("..", "..", "examples", "rallly", ".rollingstart", "instance.toml"))
 	if err != nil {
@@ -567,5 +579,14 @@ func TestLoadRallyExample(t *testing.T) {
 	}
 	if got := inst.Commands(); !slices.Equal(got, want) {
 		t.Errorf("Commands() = %v, want %v", got, want)
+	}
+	wantOps := []Operation{
+		{Name: "apply-migrations", Cmd: "pnpm db:deploy"},
+		{Name: "regenerate-client", Cmd: "pnpm db:generate"},
+		{Name: "reset-db", Cmd: "pnpm db:reset --force", Destructive: true},
+		{Name: "seed-db", Cmd: "pnpm db:seed"},
+	}
+	if got := inst.Operations(); !slices.Equal(got, wantOps) {
+		t.Errorf("Operations() = %v, want %v", got, wantOps)
 	}
 }

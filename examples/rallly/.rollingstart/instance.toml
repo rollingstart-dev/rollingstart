@@ -1,14 +1,43 @@
 # Rolling Start instance definition for Rallly — github.com/lukevella/rallly.
 #
 # Copy this directory into a Rallly clone as .rollingstart/ and run
-# `rolling doctor` there. Schema v0 carries commands only
-# (docs/reference/instance-toml.md); each value is the pnpm script Rallly
-# itself uses, so what doctor runs is what a Rallly contributor runs.
+# `rolling doctor` there. Commands and operations
+# (docs/reference/instance-toml.md); every value is a pnpm script Rallly
+# itself uses, so what doctor runs — and what a learner is offered — is
+# what a Rallly contributor runs.
 [commands]
 build     = "pnpm build"
 typecheck = "pnpm type-check"
-# Unit tests only. Rallly's integration suite needs the dev stack, which
-# makes it an operation — a lifecycle ritual, arriving with M2 — rather
-# than a health check of the working copy.
+# Unit tests only. Rallly's integration suite needs the dev stack, so it
+# is not a health check of the working copy; a task's verifier is where
+# it belongs, once the tasks format (2.3) says how one is selected.
 test      = "pnpm test:unit"
 lint      = "pnpm check"
+
+# The database rituals from Rallly's CONTRIBUTING — declared and counted
+# here, run by nothing until the session loop (M3), which prompts before
+# the destructive one. Bringing the stack up (`pnpm docker:up`) is
+# deliberately absent: Rolling Start never orchestrates the environment.
+[operations]
+# `prisma migrate reset` asks the operator to confirm, then drops the
+# database and replays every migration; on Prisma 7 it no longer seeds,
+# which is why CONTRIBUTING follows it with db:seed. --force disarms that
+# confirmation, because consent for a destructive ritual is the harness's
+# prompt, once, up front, and an operation that hangs on a hidden prompt
+# is a trap.
+reset-db          = { command = "pnpm db:reset --force", destructive = true }
+# Test users and random data — CONTRIBUTING's step after the reset, for a
+# migrated database that holds no seed rows. Additive: the script creates
+# fixed-id rows and deletes nothing, so it is not destructive. On a
+# database that already holds them it fails on the unique keys rather
+# than wiping anything, so the ritual for stale data is the reset, then
+# this.
+seed-db           = { command = "pnpm db:seed" }
+# Pending migrations applied, nothing prompted, nothing dropped — the
+# ritual after a pull that brought schema changes. Not `db:migrate`:
+# `prisma migrate dev` wants a migration name when the schema moved, and
+# refuses to run non-interactively.
+apply-migrations  = { command = "pnpm db:deploy" }
+# The Prisma client is a generated artifact; a stale one fails the build
+# and the type-check in ways that read as bugs in the code.
+regenerate-client = { command = "pnpm db:generate" }
