@@ -18,6 +18,26 @@ rolling doctor
 Commit the directory: an untracked `.rollingstart/` is exactly what the
 working-tree probe reports, and it is right to.
 
+## The reference checkout
+
+Every claim this example makes about Rallly — a script's name, what the
+seed does, which prompt a Prisma command raises — is checked against a local
+clone, not remembered and not read one file at a time through an API:
+
+```sh
+git clone https://github.com/lukevella/rallly ../rallly
+git -C ../rallly checkout --detach aab791da5177f4a7653c8904e754808d9b4968ef
+```
+
+Pinned at `aab791da` — Rallly's `main` on 2026-09-09, just past v4.14.0.
+To bump: `git -C ../rallly fetch origin && git -C ../rallly checkout
+--detach <new>`, re-check the two tables below against `package.json`'s
+`db:*` scripts and `packages/database/prisma.config.ts`, and update this
+pin in the same change. The checkout is a reference to read; the harness
+runs against a writable copy with its stack up, which is the dev
+environment tracked in
+[#53](https://github.com/rollingstart-dev/rollingstart/issues/53).
+
 ## What the commands are
 
 | key | command | why this one |
