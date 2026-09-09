@@ -69,8 +69,8 @@ Harness preconditions
   ok    file watcher         file events are delivered
 ```
 
-A finding that spans lines — the loader reports every unknown key, one per
-line — continues under its own column:
+A finding that spans lines — the loader reports every unknown key at once,
+and every bad value at once, one per line — continues under its own column:
 
 ```
 Harness preconditions
