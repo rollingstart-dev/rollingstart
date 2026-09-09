@@ -26,7 +26,10 @@ lint      = "pnpm check"
 # hidden prompt is a trap.
 reset-db          = { command = "pnpm db:reset --force", destructive = true }
 # Test users and random data, on their own: the ritual when the schema is
-# fine and only the data is stale. The reset seeds too.
+# fine and only the data is stale. The reset seeds too. Additive — the
+# script creates fixed-id rows and deletes nothing, so it is not
+# destructive; a second run fails on the unique keys rather than wiping
+# anything.
 seed-db           = { command = "pnpm db:seed" }
 # Pending migrations applied, nothing prompted, nothing dropped — the
 # ritual after a pull that brought schema changes. Not `db:migrate`:

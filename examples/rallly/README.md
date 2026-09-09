@@ -36,7 +36,7 @@ destructive one.
 | key | command | why this one |
 |---|---|---|
 | `reset-db` | `pnpm db:reset --force` | `prisma migrate reset`: confirms, then drops the database, replays every migration, and runs the seed. Destructive, so marked. `--force` disarms prisma's own confirmation — consent is the harness's prompt, once, up front, and an operation that hangs on a hidden prompt is a trap |
-| `seed-db` | `pnpm db:seed` | test users and random data on their own — the ritual when the schema is fine and only the data is stale; the reset seeds too |
+| `seed-db` | `pnpm db:seed` | test users and random data on their own — the ritual when the schema is fine and only the data is stale; the reset seeds too. Additive: the script creates fixed-id rows and deletes nothing, so it is not destructive — a second run fails on the unique keys rather than wiping anything |
 | `apply-migrations` | `pnpm db:deploy` | `prisma migrate deploy`: pending migrations applied, nothing prompted, nothing dropped — the ritual after a pull that brought schema changes. Not `db:migrate`: `prisma migrate dev` wants a migration name when the schema moved and refuses a non-interactive run |
 | `regenerate-client` | `pnpm db:generate` | the Prisma client is a generated artifact; a stale one fails the build and the type-check in ways that read as bugs in the code |
 
