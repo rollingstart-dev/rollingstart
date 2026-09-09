@@ -92,7 +92,9 @@ func (i *Instance) Corpus() Corpus {
 
 // ParseError is a definition that exists but cannot be used. Error() renders
 // one line with the file position; Detail() carries a source excerpt when the
-// underlying decoder produced one.
+// underlying decoder produced one. Load returns them joined, one per fault,
+// so a consumer rendering more than Error() walks the join's Unwrap()
+// []error rather than reaching for the first with errors.As.
 type ParseError struct {
 	Path   string
 	Line   int // 1-based; 0 when the failure has no position
@@ -146,7 +148,11 @@ type operationDoc struct {
 	Destructive bool    `toml:"destructive"`
 }
 
-// Load reads and validates the instance definition at path.
+// Load reads and validates the instance definition at path. A rejection
+// is one error joined from every fault found — the decoder's unknown keys,
+// or, once the file decodes, every value check — and is to be walked, not
+// matched once: errors.As and errors.AsType stop at the first *ParseError
+// in the join, which is one fault out of however many there are.
 func Load(path string) (*Instance, error) {
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
